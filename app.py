@@ -7,12 +7,15 @@ from clients.isolarcloud_client import ApiSolarCloud
 from clients.huawei_client import ApiHuawei
 from clients.deye_client import ApiDeye
 from models.usina import UsinaModel
+from routers import projection
 
 isolarcloud = ApiSolarCloud(settings.ISOLAR_USER, settings.ISOLAR_PASS)
 huawei = ApiHuawei(settings.HUAWEI_USER, settings.HUAWEI_PASS)
 deye = ApiDeye(settings.DEYE_USER, settings.DEYE_PASS, settings.DEYE_APPID, settings.DEYE_APPSECRET)
 
 app = FastAPI()
+
+app.include_router(projection.router)
 
 app.add_middleware(
     CORSMiddleware,
