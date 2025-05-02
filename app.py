@@ -8,10 +8,17 @@ from clients.huawei_client import ApiHuawei
 from clients.deye_client import ApiDeye
 from models.usina import UsinaModel
 from routers import projection
-from fastapi import Depends
 from database import get_db
-from sqlalchemy.orm import Session
 from services.performance_service import get_performance_diaria
+from fastapi import FastAPI, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
+from fastapi import Depends
+from esquemas import UserCreate
+from database import get_db
+from modelos import User
+from utils import hash_password, verify_password
+from auth import create_access_token, decode_access_token
 
 
 isolarcloud = ApiSolarCloud(settings.ISOLAR_USER, settings.ISOLAR_PASS)
@@ -19,7 +26,7 @@ huawei = ApiHuawei(settings.HUAWEI_USER, settings.HUAWEI_PASS)
 deye = ApiDeye(settings.DEYE_USER, settings.DEYE_PASS, settings.DEYE_APPID, settings.DEYE_APPSECRET)
 
 app = FastAPI()
-
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
 app.include_router(projection.router)
 
 app.add_middleware(
@@ -45,3 +52,41 @@ def listar_geracoes_diarias():
 @app.get("/performance_diaria")
 def performance_diaria(db: Session = Depends(get_db)):
     return get_performance_diaria(isolarcloud, deye, db)
+
+@app.post("/register")
+def register(user: UserCreate, db: Session = Depends(get_db)):
+    if db.query(User).filter(User.username == user.username).first():
+        raise HTTPException(status_code=400, detail="Usuário já existe")
+    novo_usuario = User(username=user.username, hashed_password=hash_password(user.password))
+    db.add(novo_usuario)
+    db.commit()
+    return {"message": f"Usuário '{user.username}' criado com sucesso!"}
+@app.post("/login")
+def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.username == form_data.username).first()
+    if not user or not verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Credenciais inválidas")
+    token = create_access_token({"sub": user.username})
+    return {"access_token": token, "token_type": "bearer"}
+
+@app.get("/protegido")
+def protegido(token: str = Depends(oauth2_scheme)):
+    user = decode_access_token(token)
+    if not user:
+        raise HTTPException(status_code=401, detail="Token inválido")
+    return {"msg": f"Bem-vindo, {user}!"}
+
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    username = decode_access_token(token)
+    if not username:
+        raise HTTPException(status_code=401, detail="Token inválido ou expirado")
+    
+    user = db.query(User).filter(User.username == username).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="Usuário não encontrado")
+    
+    return user
+
+@app.get("/protegido")
+def rota_protegida(usuario_logado: User = Depends(get_current_user)):
+    return {"msg": f"Bem-vindo, {usuario_logado.username}!"}
