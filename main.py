@@ -18,7 +18,9 @@ def testar_sungrow():
     token = api.login_solarcloud()
     if token:
         usinas = api.get_usinas()
-        print("Sungrow usinas:", usinas)
+        ps_keys = api.get_geracao()
+        print("PS KEYS:", ps_keys)
+        # print("Sungrow usinas:", usinas)
     else:
         print("Falha ao autenticar Sungrow")
 

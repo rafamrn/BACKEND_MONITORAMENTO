@@ -2,6 +2,7 @@ import requests
 import json
 import time
 from utils import parse_float
+from datetime import datetime, timedelta
 
 class ApiSolarCloud:
     base_url = "https://gateway.isolarcloud.com.hk/openapi/"
@@ -121,3 +122,91 @@ class ApiSolarCloud:
         self.usinas_timestamp = time.time()
 
         return dados_usinas
+
+# OBTENDO PS_KEYS E SERIAL NUMBER E DEMAIS DADOS
+    
+
+    def get_geracao(self):
+        if not self.usinas_cache:
+            self.get_usinas()  # atualiza cache se necessário
+
+        ps_daily_energy = []
+
+        # Datas
+        self.ontem = (datetime.now() - timedelta(days=1)).strftime("%Y%m%d")
+        self.hoje = datetime.now().strftime("%Y%m%d")
+
+        for usina in self.usinas_cache:
+            ps_id = usina.get("ps_id")
+            if not ps_id:
+                continue
+
+            # 1. Buscar inversores da usina
+            url_device_list = self.base_url + "getDeviceList"
+            body_device = {
+                "appkey": self.appkey,
+                "token": self.token_cache,
+                "curPage": 1,
+                "size": 100,
+                "ps_id": ps_id,
+                "device_type_list": [1],
+                "lang": "_pt_BR"
+            }
+
+            response = self._post_with_auth(url_device_list, body_device)
+            if response.status_code != 200:
+                print(f"Erro ao buscar inversores da usina {ps_id}")
+                continue
+
+            try:
+                data = response.json()
+                device_list = data["result_data"]["pageList"]
+
+                for device in device_list:
+                    ps_key = device.get("ps_key")
+                    device_sn = device.get("device_sn")
+
+                    # 2. Buscar energia do dia anterior
+                    url_energy = self.base_url + "getDevicePointsDayMonthYearDataList"
+                    body_energy = {
+                        "appkey": self.appkey,
+                        "token": self.token_cache,
+                        "data_point": "p1",
+                        "end_time": self.hoje,
+                        "query_type": "1",
+                        "start_time": self.ontem,
+                        "ps_key_list": [ps_key],
+                        "data_type": "2",
+                        "order": "0"
+                    }
+
+                    r = self._post_with_auth(url_energy, body_energy)
+                    if r.status_code != 200:
+                        print(f"Erro ao buscar energia para ps_key {ps_key}")
+                        continue
+
+                    try:
+                        energia_data = r.json()
+                        dados = energia_data["result_data"]
+                        chave = next(iter(dados))
+                        lista_p1 = dados[chave]["p1"]
+                        valor_str = lista_p1[0].get("2", "0")
+                        energia_total = float(valor_str)
+
+                        ps_daily_energy.append({
+                            "ps_id": ps_id,
+                            "device_sn": device_sn,
+                            "ps_key": ps_key,
+                            "data": self.ontem,
+                            "energia_gerada_kWh": round(energia_total/1000, 2)
+                        })
+
+                    except Exception as e:
+                        print(f"Erro ao extrair energia para ps_key {ps_key}: {e}")
+                        continue
+
+            except Exception as e:
+                print(f"Erro ao processar ps_id {ps_id}: {e}")
+                continue
+
+        return ps_daily_energy

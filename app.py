@@ -8,6 +8,11 @@ from clients.huawei_client import ApiHuawei
 from clients.deye_client import ApiDeye
 from models.usina import UsinaModel
 from routers import projection
+from fastapi import Depends
+from database import get_db
+from sqlalchemy.orm import Session
+from services.performance_service import calcular_performance_diaria
+
 
 isolarcloud = ApiSolarCloud(settings.ISOLAR_USER, settings.ISOLAR_PASS)
 huawei = ApiHuawei(settings.HUAWEI_USER, settings.HUAWEI_PASS)
@@ -32,3 +37,21 @@ app.add_middleware(
 def listar_usinas():
     usinas = huawei.get_usinas() + deye.get_usinas() + isolarcloud.get_usinas()
     return agrupar_usinas_por_nome(usinas)
+
+@app.get("/geracoes_diarias")
+def listar_geracoes_diarias():
+    return isolarcloud.get_geracao()
+
+@app.get("/performance_diaria")
+def performance_diaria(db: Session = Depends(get_db)):
+    geracoes = isolarcloud.get_geracao()
+    resultados = []
+
+    for g in geracoes:
+        ps_id = g.get("ps_id")
+        energia = g.get("energia_gerada_kWh")
+        if ps_id and energia:
+            resultado = calcular_performance_diaria(ps_id, energia, db)
+            resultados.append(resultado)
+
+    return resultados
