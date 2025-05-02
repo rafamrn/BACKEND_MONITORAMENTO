@@ -127,6 +127,10 @@ class ApiSolarCloud:
     
 
     def get_geracao(self):
+        print("Chamando get_geracao() no Railway 🚀")
+        if not self.token_cache:
+            self.login_solarcloud()
+            
         if not self.usinas_cache:
             self.get_usinas()  # atualiza cache se necessário
 
@@ -154,6 +158,7 @@ class ApiSolarCloud:
             }
 
             response = self._post_with_auth(url_device_list, body_device)
+            print(f"🔁 Consultando inversores da usina {ps_id}")
             if response.status_code != 200:
                 print(f"Erro ao buscar inversores da usina {ps_id}")
                 continue
@@ -180,6 +185,7 @@ class ApiSolarCloud:
                         "order": "0"
                     }
 
+                    print(f"🔁 Consultando geração para ps_key {ps_key}")
                     r = self._post_with_auth(url_energy, body_energy)
                     if r.status_code != 200:
                         print(f"Erro ao buscar energia para ps_key {ps_key}")
@@ -209,4 +215,5 @@ class ApiSolarCloud:
                 print(f"Erro ao processar ps_id {ps_id}: {e}")
                 continue
 
+        print(f"✅ Total de registros obtidos: {len(ps_daily_energy)}")
         return ps_daily_energy
