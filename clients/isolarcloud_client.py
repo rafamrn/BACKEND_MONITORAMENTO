@@ -3,6 +3,7 @@ import json
 import time
 from utils import parse_float
 from datetime import datetime, timedelta
+from pytz import timezone
 
 class ApiSolarCloud:
     base_url = "https://gateway.isolarcloud.com.hk/openapi/"
@@ -137,8 +138,10 @@ class ApiSolarCloud:
         ps_daily_energy = []
 
         # Datas
-        self.ontem = 20250430
-        self.hoje = 20250501
+        brasil = timezone("America/Sao_Paulo")
+        agora = datetime.now(brasil)
+        self.ontem = (agora - timedelta(days=1)).strftime("%Y%m%d")
+        self.hoje = agora.strftime("%Y%m%d")
 
         for usina in self.usinas_cache:
             ps_id = usina.get("ps_id")
