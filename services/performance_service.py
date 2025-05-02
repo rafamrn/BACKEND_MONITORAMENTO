@@ -41,7 +41,7 @@ def calcular_performance_diaria(plant_id: int, energia_gerada: float, db: Sessio
     }
 
 # Função para obter performance de todas as usinas com cache
-def get_performance_diaria(isolarcloud, db: Session):
+def get_performance_diaria(isolarcloud, deye, db: Session):
     global _performance_cache, _performance_cache_timestamp
 
     agora = datetime.now()
@@ -54,7 +54,10 @@ def get_performance_diaria(isolarcloud, db: Session):
 
     print("⚙️ Calculando nova performance diária...")
 
-    geracoes = isolarcloud.get_geracao()
+    geracoes_isolarcloud = isolarcloud.get_geracao()
+    geracoes_deye = deye.get_geracao()
+
+    geracoes = geracoes_isolarcloud + geracoes_deye
     resultados = []
 
     for g in geracoes:
