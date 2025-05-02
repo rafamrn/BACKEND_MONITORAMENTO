@@ -142,23 +142,21 @@ class ApiSolarCloud:
 
         if not self.token_cache:
             self.login_solarcloud()
-            
-        if not self.usinas_cache:
-            self.get_usinas()  # atualiza cache se necessário
 
-        ps_daily_energy = []
+        if not self.usinas_cache:
+            self.get_usinas()
 
         # Datas
-
         self.anteontem = (agora - timedelta(days=2)).strftime("%Y%m%d")
         self.ontem = (agora - timedelta(days=1)).strftime("%Y%m%d")
+
+        energia_por_usina = {}
 
         for usina in self.usinas_cache:
             ps_id = usina.get("ps_id")
             if not ps_id:
                 continue
 
-            # 1. Buscar inversores da usina
             url_device_list = self.base_url + "getDeviceList"
             body_device = {
                 "appkey": self.appkey,
@@ -182,9 +180,7 @@ class ApiSolarCloud:
 
                 for device in device_list:
                     ps_key = device.get("ps_key")
-                    device_sn = device.get("device_sn")
 
-                    # 2. Buscar energia do dia anterior
                     url_energy = self.base_url + "getDevicePointsDayMonthYearDataList"
                     body_energy = {
                         "appkey": self.appkey,
@@ -212,13 +208,9 @@ class ApiSolarCloud:
                         valor_str = lista_p1[0].get("2", "0")
                         energia_total = float(valor_str)
 
-                        ps_daily_energy.append({
-                            "ps_id": ps_id,
-                            "device_sn": device_sn,
-                            "ps_key": ps_key,
-                            "data": self.ontem,
-                            "energia_gerada_kWh": round(energia_total/1000, 2)
-                        })
+                        if ps_id not in energia_por_usina:
+                            energia_por_usina[ps_id] = 0.0
+                        energia_por_usina[ps_id] += energia_total
 
                     except Exception as e:
                         import traceback
@@ -229,6 +221,15 @@ class ApiSolarCloud:
             except Exception as e:
                 print(f"Erro ao processar ps_id {ps_id}: {e}")
                 continue
+
+        ps_daily_energy = [
+            {
+                "ps_id": ps_id,
+                "data": self.ontem,
+                "energia_gerada_kWh": round(energia_total / 1000, 2)
+            }
+            for ps_id, energia_total in energia_por_usina.items()
+        ]
 
         self._geracao_cache = ps_daily_energy
         self._geracao_cache_timestamp = agora
