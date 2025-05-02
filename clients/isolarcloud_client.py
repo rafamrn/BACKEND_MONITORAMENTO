@@ -208,7 +208,9 @@ class ApiSolarCloud:
                         })
 
                     except Exception as e:
-                        print(f"Erro ao extrair energia para ps_key {ps_key}: {e}")
+                        import traceback
+                        print(f"❌ Erro ao extrair energia para ps_key {ps_key}: {e}")
+                        traceback.print_exc()
                         continue
 
             except Exception as e:
