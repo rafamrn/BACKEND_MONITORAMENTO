@@ -11,7 +11,7 @@ from routers import projection
 from fastapi import Depends
 from database import get_db
 from sqlalchemy.orm import Session
-from services.performance_service import calcular_performance_diaria
+from services.performance_service import get_performance_diaria
 
 
 isolarcloud = ApiSolarCloud(settings.ISOLAR_USER, settings.ISOLAR_PASS)
@@ -44,14 +44,4 @@ def listar_geracoes_diarias():
 
 @app.get("/performance_diaria")
 def performance_diaria(db: Session = Depends(get_db)):
-    geracoes = isolarcloud.get_geracao()
-    resultados = []
-
-    for g in geracoes:
-        ps_id = g.get("ps_id")
-        energia = g.get("energia_gerada_kWh")
-        if ps_id and energia:
-            resultado = calcular_performance_diaria(ps_id, energia, db)
-            resultados.append(resultado)
-
-    return resultados
+    return get_performance_diaria(isolarcloud, db)

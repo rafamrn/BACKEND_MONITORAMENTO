@@ -23,6 +23,9 @@ class ApiSolarCloud:
         self.token_timestamp = None
         self.usinas_timestamp = None
         self.session = requests.Session()
+        self._geracao_cache = None
+        self._geracao_cache_timestamp = None
+        
 
     def login_solarcloud(self):
         if self.token_cache and time.time() - self.token_timestamp < 600:  # 10 minutos de cache
@@ -129,6 +132,14 @@ class ApiSolarCloud:
 
     def get_geracao(self):
         print("Chamando get_geracao() no Railway 🚀")
+        brasil = timezone("America/Sao_Paulo")
+        agora = datetime.now(brasil)
+
+        if self._geracao_cache and self._geracao_cache_timestamp:
+            if (agora - self._geracao_cache_timestamp) < timedelta(minutes=10):
+                print("🔁 Retornando geração do cache diário")
+                return self._geracao_cache
+
         if not self.token_cache:
             self.login_solarcloud()
             
@@ -138,8 +149,7 @@ class ApiSolarCloud:
         ps_daily_energy = []
 
         # Datas
-        brasil = timezone("America/Sao_Paulo")
-        agora = datetime.now(brasil)
+
         self.ontem = (agora - timedelta(days=1)).strftime("%Y%m%d")
         self.hoje = agora.strftime("%Y%m%d")
 
@@ -220,5 +230,8 @@ class ApiSolarCloud:
                 print(f"Erro ao processar ps_id {ps_id}: {e}")
                 continue
 
+        self._geracao_cache = ps_daily_energy
+        self._geracao_cache_timestamp = agora
+        print("✅ Geração salva em cache")
         print(f"✅ Total de registros obtidos: {len(ps_daily_energy)}")
         return ps_daily_energy
