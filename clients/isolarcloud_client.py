@@ -137,8 +137,8 @@ class ApiSolarCloud:
         ps_daily_energy = []
 
         # Datas
-        self.ontem = (datetime.now() - timedelta(days=1)).strftime("%Y%m%d")
-        self.hoje = datetime.now().strftime("%Y%m%d")
+        self.ontem = 20250430
+        self.hoje = 20250501
 
         for usina in self.usinas_cache:
             ps_id = usina.get("ps_id")
