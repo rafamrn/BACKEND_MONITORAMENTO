@@ -150,8 +150,8 @@ class ApiSolarCloud:
 
         # Datas
 
+        self.anteontem = (agora - timedelta(days=2)).strftime("%Y%m%d")
         self.ontem = (agora - timedelta(days=1)).strftime("%Y%m%d")
-        self.hoje = agora.strftime("%Y%m%d")
 
         for usina in self.usinas_cache:
             ps_id = usina.get("ps_id")
@@ -190,9 +190,9 @@ class ApiSolarCloud:
                         "appkey": self.appkey,
                         "token": self.token_cache,
                         "data_point": "p1",
-                        "end_time": self.hoje,
+                        "end_time": self.ontem,
                         "query_type": "1",
-                        "start_time": self.ontem,
+                        "start_time": self.anteontem,
                         "ps_key_list": [ps_key],
                         "data_type": "2",
                         "order": "0"
