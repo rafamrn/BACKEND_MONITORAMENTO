@@ -40,8 +40,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    email = decode_access_token(token)
+    if not username:
+        raise HTTPException(status_code=401, detail="Token inválido ou expirado")
+    
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="Usuário não encontrado")
+    
+    return user
+
 @app.get("/usina", response_model=List[UsinaModel])
-def listar_usinas():
+def listar_usinas(usuario_logado: User = Depends(get_current_user)):
     usinas = huawei.get_usinas() + deye.get_usinas() + isolarcloud.get_usinas()
     return agrupar_usinas_por_nome(usinas)
 
@@ -71,7 +82,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
             detail="Credenciais inválidas"
         )
     
-    token = create_access_token(data={"sub": user.username})
+    token = create_access_token(data={"sub": user.email})
     return {"access_token": token, "token_type": "bearer"}
 
 @app.get("/protegido")
@@ -81,16 +92,7 @@ def protegido(token: str = Depends(oauth2_scheme)):
         raise HTTPException(status_code=401, detail="Token inválido")
     return {"msg": f"Bem-vindo, {user}!"}
 
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
-    username = decode_access_token(token)
-    if not username:
-        raise HTTPException(status_code=401, detail="Token inválido ou expirado")
-    
-    user = db.query(User).filter(User.username == username).first()
-    if not user:
-        raise HTTPException(status_code=401, detail="Usuário não encontrado")
-    
-    return user
+
 
 @app.get("/protegido")
 def rota_protegida(usuario_logado: User = Depends(get_current_user)):
