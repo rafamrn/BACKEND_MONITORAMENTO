@@ -25,6 +25,7 @@ class ApiSolarCloud:
         self.session = requests.Session()
         self._geracao_cache = None
         self._geracao_cache_timestamp = None
+        self.geracao7_cache = None
         
 
     def login_solarcloud(self):
@@ -150,8 +151,10 @@ class ApiSolarCloud:
         # Datas
         self.anteontem = (agora - timedelta(days=2)).strftime("%Y%m%d")
         self.ontem = (agora - timedelta(days=1)).strftime("%Y%m%d")
+        sete_dias_atras = (agora - timedelta(days=8)).strftime("%Y%m%d")
 
         energia_por_usina = {}
+        energia_7dias_por_usina = {}
 
         for usina in self.usinas_cache:
             ps_id = usina.get("ps_id")
@@ -219,10 +222,41 @@ class ApiSolarCloud:
                         traceback.print_exc()
                         continue
 
+                    body_energy = {
+                        "appkey": self.appkey,
+                        "token": self.token_cache,
+                        "data_point": "p1",
+                        "end_time": self.ontem,
+                        "query_type": "1",
+                        "start_time": sete_dias_atras,
+                        "ps_key_list": [ps_key],
+                        "data_type": "2",
+                        "order": "0"
+                    }
+
+                    r = self._post_with_auth(self.base_url + "getDevicePointsDayMonthYearDataList", body_energy)
+                    if r.status_code != 200:
+                        continue
+
+                    try:
+                        energia_data = r.json()
+                        dados = energia_data["result_data"]
+                        chave = next(iter(dados))
+                        lista_p1 = dados[chave]["p1"]
+                        soma_7dias = sum(float(p.get("2", "0")) for p in lista_p1)
+
+                        if ps_id not in energia_7dias_por_usina:
+                            energia_7dias_por_usina[ps_id] = 0.0
+                        energia_7dias_por_usina[ps_id] += soma_7dias
+
+                    except Exception as e:
+                        continue
             except Exception as e:
                 print(f"Erro ao processar ps_id {ps_id}: {e}")
                 continue
 
+
+#Resultado 1 dia
         ps_daily_energy = [
             {
                 "ps_id": ps_id,
@@ -232,8 +266,21 @@ class ApiSolarCloud:
             for ps_id, energia_total in energia_por_usina.items()
         ]
 
+        ps_7dias_energy = [
+    {
+        "ps_id": ps_id,
+        "periodo": f"{sete_dias_atras} a {self.ontem}",
+        "energia_gerada_kWh": round(energia_total / 1000, 2)
+    }
+    for ps_id, energia_total in energia_7dias_por_usina.items()
+]
+
         self._geracao_cache = ps_daily_energy
+        self.geracao7_cache = ps_7dias_energy
         self._geracao_cache_timestamp = agora
         print("✅ Geração salva em cache")
         print(f"✅ Total de registros obtidos: {len(ps_daily_energy)}")
-        return ps_daily_energy
+        return {
+            "diario": ps_daily_energy,
+            "setedias": ps_7dias_energy
+        }

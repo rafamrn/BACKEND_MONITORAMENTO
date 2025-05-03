@@ -15,7 +15,7 @@ from clients.huawei_client import ApiHuawei
 from clients.deye_client import ApiDeye
 from models.usina import UsinaModel
 from routers import projection
-from services.performance_service import get_performance_diaria
+from services.performance_service import get_performance_diaria, get_performance_7dias
 
 # Instanciando clientes das APIs externas
 isolarcloud = ApiSolarCloud(settings.ISOLAR_USER, settings.ISOLAR_PASS)
@@ -63,7 +63,12 @@ def listar_geracoes_diarias():
 
 @app.get("/performance_diaria")
 def performance_diaria(db: Session = Depends(get_db)):
-    return get_performance_diaria(isolarcloud, deye, db)
+    return get_performance_diaria(isolarcloud, db)
+
+@app.get("/performance_7dias")
+def performance_7dias(db: Session = Depends(get_db)):
+    return get_performance_7dias(isolarcloud, db)
+
 
 @app.post("/register")
 def register(user: UserCreate, db: Session = Depends(get_db)):
