@@ -85,4 +85,4 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
 
 @app.get("/protegido")
 def rota_protegida(usuario_logado: User = Depends(get_current_user)):
-    return {"msg": f"Bem-vindo, {usuario_logado.username}!"}
+    return {"msg": f"Bem-vindo, {usuario_logado.email}!"}
