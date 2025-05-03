@@ -1,4 +1,3 @@
-from fastapi import FastAPI
 from utils import agrupar_usinas_por_nome
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
@@ -13,7 +12,6 @@ from services.performance_service import get_performance_diaria
 from fastapi import FastAPI, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
-from fastapi import Depends
 from esquemas import UserCreate
 from database import get_db
 from modelos import User
@@ -84,13 +82,6 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     
     token = create_access_token(data={"sub": user.email})
     return {"access_token": token, "token_type": "bearer"}
-
-@app.get("/protegido")
-def protegido(token: str = Depends(oauth2_scheme)):
-    user = decode_access_token(token)
-    if not user:
-        raise HTTPException(status_code=401, detail="Token inválido")
-    return {"msg": f"Bem-vindo, {user}!"}
 
 @app.get("/protegido")
 def rota_protegida(usuario_logado: User = Depends(get_current_user)):
