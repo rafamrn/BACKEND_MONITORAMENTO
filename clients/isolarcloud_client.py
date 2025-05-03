@@ -140,7 +140,10 @@ class ApiSolarCloud:
         if self._geracao_cache and self._geracao_cache_timestamp:
             if (agora - self._geracao_cache_timestamp) < timedelta(minutes=10):
                 print("🔁 Retornando geração do cache diário")
-                return self._geracao_cache
+                return {
+                    "diario": self._geracao_cache,
+                    "setedias": self.geracao7_cache or []
+                }
 
         if not self.token_cache:
             self.login_solarcloud()
@@ -148,7 +151,6 @@ class ApiSolarCloud:
         if not self.usinas_cache:
             self.get_usinas()
 
-        # Datas
         self.anteontem = (agora - timedelta(days=2)).strftime("%Y%m%d")
         self.ontem = (agora - timedelta(days=1)).strftime("%Y%m%d")
         sete_dias_atras = (agora - timedelta(days=8)).strftime("%Y%m%d")
@@ -173,7 +175,6 @@ class ApiSolarCloud:
             }
 
             response = self._post_with_auth(url_device_list, body_device)
-            print(f"🔁 Consultando inversores da usina {ps_id}")
             if response.status_code != 200:
                 print(f"Erro ao buscar inversores da usina {ps_id}")
                 continue
@@ -185,8 +186,8 @@ class ApiSolarCloud:
                 for device in device_list:
                     ps_key = device.get("ps_key")
 
-                    url_energy = self.base_url + "getDevicePointsDayMonthYearDataList"
-                    body_energy = {
+                    # Geração diária (anteontem a ontem)
+                    body_energy_1d = {
                         "appkey": self.appkey,
                         "token": self.token_cache,
                         "data_point": "p1",
@@ -198,31 +199,21 @@ class ApiSolarCloud:
                         "order": "0"
                     }
 
-                    print(f"🔁 Consultando geração para ps_key {ps_key}")
-                    r = self._post_with_auth(url_energy, body_energy)
-                    if r.status_code != 200:
-                        print(f"Erro ao buscar energia para ps_key {ps_key}")
-                        continue
+                    r1 = self._post_with_auth(self.base_url + "getDevicePointsDayMonthYearDataList", body_energy_1d)
+                    if r1.status_code == 200:
+                        try:
+                            dados1 = r1.json()["result_data"]
+                            chave = next(iter(dados1))
+                            lista_p1 = dados1[chave]["p1"]
+                            valor_str = lista_p1[0].get("2", "0")
+                            energia_total = float(valor_str)
 
-                    try:
-                        energia_data = r.json()
-                        dados = energia_data["result_data"]
-                        chave = next(iter(dados))
-                        lista_p1 = dados[chave]["p1"]
-                        valor_str = lista_p1[0].get("2", "0")
-                        energia_total = float(valor_str)
+                            energia_por_usina[ps_id] = energia_por_usina.get(ps_id, 0.0) + energia_total
+                        except Exception as e:
+                            print(f"Erro extraindo geração 1d de {ps_key}: {e}")
 
-                        if ps_id not in energia_por_usina:
-                            energia_por_usina[ps_id] = 0.0
-                        energia_por_usina[ps_id] += energia_total
-
-                    except Exception as e:
-                        import traceback
-                        print(f"❌ Erro ao extrair energia para ps_key {ps_key}: {e}")
-                        traceback.print_exc()
-                        continue
-
-                    body_energy = {
+                    # Geração 7 dias
+                    body_energy_7d = {
                         "appkey": self.appkey,
                         "token": self.token_cache,
                         "data_point": "p1",
@@ -234,52 +225,46 @@ class ApiSolarCloud:
                         "order": "0"
                     }
 
-                    r = self._post_with_auth(self.base_url + "getDevicePointsDayMonthYearDataList", body_energy)
-                    if r.status_code != 200:
-                        continue
+                    r2 = self._post_with_auth(self.base_url + "getDevicePointsDayMonthYearDataList", body_energy_7d)
+                    if r2.status_code == 200:
+                        try:
+                            dados2 = r2.json()["result_data"]
+                            chave = next(iter(dados2))
+                            lista_p1 = dados2[chave]["p1"]
+                            soma_7dias = sum(float(p.get("2", "0")) for p in lista_p1)
 
-                    try:
-                        energia_data = r.json()
-                        dados = energia_data["result_data"]
-                        chave = next(iter(dados))
-                        lista_p1 = dados[chave]["p1"]
-                        soma_7dias = sum(float(p.get("2", "0")) for p in lista_p1)
+                            energia_7dias_por_usina[ps_id] = energia_7dias_por_usina.get(ps_id, 0.0) + soma_7dias
+                        except Exception as e:
+                            print(f"Erro extraindo geração 7d de {ps_key}: {e}")
 
-                        if ps_id not in energia_7dias_por_usina:
-                            energia_7dias_por_usina[ps_id] = 0.0
-                        energia_7dias_por_usina[ps_id] += soma_7dias
-
-                    except Exception as e:
-                        continue
             except Exception as e:
-                print(f"Erro ao processar ps_id {ps_id}: {e}")
+                print(f"Erro processando usina {ps_id}: {e}")
                 continue
 
-
-#Resultado 1 dia
         ps_daily_energy = [
             {
                 "ps_id": ps_id,
                 "data": self.ontem,
-                "energia_gerada_kWh": round(energia_total / 1000, 2)
+                "energia_gerada_kWh": round(valor / 1000, 2)
             }
-            for ps_id, energia_total in energia_por_usina.items()
+            for ps_id, valor in energia_por_usina.items()
         ]
 
         ps_7dias_energy = [
-    {
-        "ps_id": ps_id,
-        "periodo": f"{sete_dias_atras} a {self.ontem}",
-        "energia_gerada_kWh": round(energia_total / 1000, 2)
-    }
-    for ps_id, energia_total in energia_7dias_por_usina.items()
-]
+            {
+                "ps_id": ps_id,
+                "periodo": f"{sete_dias_atras} a {self.ontem}",
+                "energia_gerada_kWh": round(valor / 1000, 2)
+            }
+            for ps_id, valor in energia_7dias_por_usina.items()
+        ]
 
+        # Salvar no cache
         self._geracao_cache = ps_daily_energy
         self.geracao7_cache = ps_7dias_energy
         self._geracao_cache_timestamp = agora
+
         print("✅ Geração salva em cache")
-        print(f"✅ Total de registros obtidos: {len(ps_daily_energy)}")
         return {
             "diario": ps_daily_energy,
             "setedias": ps_7dias_energy
