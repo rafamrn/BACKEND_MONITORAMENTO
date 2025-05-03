@@ -28,8 +28,8 @@ def testar_deye():
     api = ApiDeye(settings.DEYE_USER, settings.DEYE_PASS, settings.DEYE_APPID, settings.DEYE_APPSECRET)
     token = api.fazer_login()
     if token:
-        usinas = api.get_usinas()
-        # usinas = api.get_geracao()
+        # usinas = api.get_usinas()
+        usinas = api.get_geracao()
         print("Deye usinas:", usinas)
     else:
         print("Falha ao autenticar Deye")
@@ -37,6 +37,6 @@ def testar_deye():
 
 if __name__ == "__main__":
     # Altere aqui para escolher qual testar
-    testar_sungrow()
+    # testar_sungrow()
     # testar_huawei()
-    # testar_deye()
+    testar_deye()

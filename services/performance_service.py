@@ -77,7 +77,7 @@ def calcular_performance_7dias(plant_id: int, energia_gerada: float, db: Session
     }
 
 # Obter performance diária
-def get_performance_diaria(isolarcloud, db: Session):
+def get_performance_diaria(isolarcloud, deye, db: Session):
     global _performance_diaria_cache, _performance_diaria_cache_timestamp
 
     agora = datetime.now()
@@ -87,8 +87,12 @@ def get_performance_diaria(isolarcloud, db: Session):
             return _performance_diaria_cache
 
     print("⚙️ Calculando nova performance diária...")
-    resultado_geracao = isolarcloud.get_geracao()
-    geracoes = resultado_geracao.get("diario", [])
+
+    # Coleta dos dados
+    resultado_geracao_isolarcloud = isolarcloud.get_geracao().get("diario", [])
+    resultado_geracao_deye = deye.get_geracao()  # já é lista
+
+    geracoes = resultado_geracao_isolarcloud + resultado_geracao_deye
     resultados = []
 
     for g in geracoes:

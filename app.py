@@ -59,11 +59,11 @@ def listar_usinas(usuario_logado: User = Depends(get_current_user)):
 
 @app.get("/geracoes_diarias")
 def listar_geracoes_diarias():
-    return isolarcloud.get_geracao() + deye.get_geracao()
+    return isolarcloud.get_geracao() + deye.get_geracao() + huawei.get_geracao()
 
 @app.get("/performance_diaria")
 def performance_diaria(db: Session = Depends(get_db)):
-    return get_performance_diaria(isolarcloud, db)
+    return get_performance_diaria(isolarcloud, deye, db)
 
 @app.get("/performance_7dias")
 def performance_7dias(db: Session = Depends(get_db)):
