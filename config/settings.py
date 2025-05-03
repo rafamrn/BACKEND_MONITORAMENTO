@@ -1,8 +1,8 @@
 class Settings:
     HUAWEI_USER = "rms7energia"
     HUAWEI_PASS = "rms7@API"
-    ISOLAR_USER = "contato@rms7energia.com"
-    ISOLAR_PASS = "rms7@SUNGROW"
+    ISOLAR_USER = "bruno@clareon.com.br"
+    ISOLAR_PASS = "Guimoeiros*1"
     DEYE_USER = "contato@rms7energia.com"
     DEYE_PASS = "c964ff72b39a005ad966bd2333e865f91c471085fb9b82d76c4ec75c2638321f"
     DEYE_APPID = "202504302900004"
