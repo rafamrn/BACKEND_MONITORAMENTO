@@ -133,98 +133,110 @@ class ApiHuawei:
     
     # OBTENDO GERAÇÃO
 
-    # def get_geracao(self):
-    #     print("Chamando get_geracao() no Railway 🚀")
-    #     brasil = timezone("America/Sao_Paulo")
-    #     agora = datetime.now(brasil)
+    def get_geracao(self):
+        print("Chamando get_geracao() no Railway 🚀")
+        brasil = timezone("America/Sao_Paulo")
+        agora = datetime.now(brasil)
 
-    #     if self._geracao_cache and self._geracao_cache_timestamp:
-    #         if (agora - self._geracao_cache_timestamp) < timedelta(minutes=10):
-    #             print("🔁 Retornando geração do cache diário")
-    #             return self._geracao_cache
+        if hasattr(self, "_geracao_cache") and hasattr(self, "_geracao_cache_timestamp"):
+            if self._geracao_cache and self._geracao_cache_timestamp:
+                if (agora - self._geracao_cache_timestamp) < timedelta(minutes=10):
+                    print("🔁 Retornando geração do cache diário")
+                    return self._geracao_cache
 
-    #     if not self.token_cache:
-    #         self.login_huawei()
+        if not hasattr(self, "xsrf") or not self.xsrf:
+            self.login_huawei()
 
-    #     if not self.usinas_cache:
-    #         self.get_usinas()
+        if not hasattr(self, "cached_data") or not self.cached_data:
+            self.get_usinas()
 
-    #     # Datas
-    #     self.anteontem = (agora - timedelta(days=2)).strftime("%Y%m%d")
-    #     self.ontem = (agora - timedelta(days=1)).strftime("%Y%m%d")
+        # Calcula ontem em milissegundos
+        ontem = agora - timedelta(days=1)
+        inicio = datetime(ontem.year, ontem.month, ontem.day, 0, 0, 0, tzinfo=brasil)
+        fim = inicio + timedelta(days=1)
 
-    #     energia_por_usina = {}
+        start_ms = int(inicio.timestamp() * 1000)
+        end_ms = int(fim.timestamp() * 1000)
 
-    #     for usina in self.cached_data:
-    #         ps_id = usina.get("ps_id")
-    #         if not ps_id:
-    #             continue
+        energia_por_usina = {}
 
-    #         url_device_list = self.base_url + "getDevList"
-    #         body_device = {
-    #             "stationCodes": ps_id
-    #         }
+        for usina in self.cached_data:
+            ps_id = usina.get("ps_id")
+            if not ps_id:
+                continue
 
-    #         response = self._post_with_auth(url_device_list, body_device)
-    #         print(f"🔁 Consultando inversores da usina {ps_id}")
-    #         if response.status_code != 200:
-    #             print(f"Erro ao buscar inversores da usina {ps_id}")
-    #             continue
+            url_device_list = self.base_url + "getDevList"
+            body_device = {"stationCodes": ps_id}
 
-    #         try:
-    #             data = response.json()
-    #             device_list = data["data"][0]["id"]
+            response = self._post_with_auth(url_device_list, body_device)
+            print(f"🔁 Consultando inversores da usina {ps_id}")
+            if response.status_code != 200:
+                print(f"Erro ao buscar inversores da usina {ps_id}")
+                continue
 
-    #             for device in device_list:
-    #                 ps_key = device.get("id")
+            try:
+                data = response.json()
+                device_list = data["data"]
 
-    #                 url_energy = self.base_url + "getDevHistoryKpi"
-    #                 body_energy = {
-    #                 "devIds": ps_key,
-    #                 "devTypeId":1,
-    #                 "startTime":1501862400000,
-    #                 "endTime":1501872400000
-    #             }
+                for device in device_list:
+                    ps_key = device.get("id")
+                    if not ps_key:
+                        continue
 
-    #                 print(f"🔁 Consultando geração para ps_key {ps_key}")
-    #                 r = self._post_with_auth(url_energy, body_energy)
-    #                 if r.status_code != 200:
-    #                     print(f"Erro ao buscar energia para ps_key {ps_key}")
-    #                     continue
+                    url_energy = self.base_url + "getDevHistoryKpi"
+                    body_energy = {
+                        "devIds": ps_key,
+                        "devTypeId": 1,
+                        "startTime": start_ms,
+                        "endTime": end_ms
+                    }
 
-    #                 try:
-    #                     energia_data = r.json()
-    #                     dados = energia_data["result_data"]
-    #                     chave = next(iter(dados))
-    #                     lista_p1 = dados[chave]["p1"]
-    #                     valor_str = lista_p1[0].get("2", "0")
-    #                     energia_total = float(valor_str)
+                    print(f"🔁 Consultando geração para ps_key {ps_key}")
+                    r = self._post_with_auth(url_energy, body_energy)
+                    if r.status_code != 200:
+                        print(f"Erro ao buscar energia para ps_key {ps_key}")
+                        continue
 
-    #                     if ps_id not in energia_por_usina:
-    #                         energia_por_usina[ps_id] = 0.0
-    #                     energia_por_usina[ps_id] += energia_total
+                    try:
+                        energia_data = r.json()
+                        dados = energia_data.get("result_data", {})
+                        if not dados:
+                            continue
 
-    #                 except Exception as e:
-    #                     import traceback
-    #                     print(f"❌ Erro ao extrair energia para ps_key {ps_key}: {e}")
-    #                     traceback.print_exc()
-    #                     continue
+                        chave = next(iter(dados))
+                        lista_p1 = dados[chave].get("p1", [])
+                        if not lista_p1:
+                            continue
 
-    #         except Exception as e:
-    #             print(f"Erro ao processar ps_id {ps_id}: {e}")
-    #             continue
+                        ultimo_ponto = lista_p1[-1]
+                        valor_str = ultimo_ponto.get("day_cap", "0") or ultimo_ponto.get("2", "0")
+                        energia_total = float(valor_str)
 
-    #     ps_daily_energy = [
-    #         {
-    #             "ps_id": ps_id,
-    #             "data": self.ontem,
-    #             "energia_gerada_kWh": round(energia_total / 1000, 2)
-    #         }
-    #         for ps_id, energia_total in energia_por_usina.items()
-    #     ]
+                        if ps_id not in energia_por_usina:
+                            energia_por_usina[ps_id] = 0.0
+                        energia_por_usina[ps_id] += energia_total
 
-    #     self._geracao_cache = ps_daily_energy
-    #     self._geracao_cache_timestamp = agora
-    #     print("✅ Geração salva em cache")
-    #     print(f"✅ Total de registros obtidos: {len(ps_daily_energy)}")
-    #     return ps_daily_energy
+                    except Exception as e:
+                        import traceback
+                        print(f"❌ Erro ao extrair energia para ps_key {ps_key}: {e}")
+                        traceback.print_exc()
+                        continue
+
+            except Exception as e:
+                print(f"Erro ao processar ps_id {ps_id}: {e}")
+                continue
+
+        ps_daily_energy = [
+            {
+                "ps_id": ps_id,
+                "data": inicio.strftime("%Y%m%d"),
+                "energia_gerada_kWh": round(energia_total / 1000, 2)
+            }
+            for ps_id, energia_total in energia_por_usina.items()
+        ]
+
+        self._geracao_cache = ps_daily_energy
+        self._geracao_cache_timestamp = agora
+        print("✅ Geração salva em cache")
+        print(f"✅ Total de registros obtidos: {len(ps_daily_energy)}")
+        return ps_daily_energy

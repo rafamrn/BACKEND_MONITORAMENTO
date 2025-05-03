@@ -8,7 +8,7 @@ def testar_huawei():
     api = ApiHuawei(settings.HUAWEI_USER, settings.HUAWEI_PASS)
     token = api.login_huawei()
     if token:
-        usinas = api.get_usinas()
+        usinas = api.get_geracao()
         print("Huawei usinas:", usinas)
     else:
         print("Falha ao autenticar Huawei")
@@ -38,5 +38,5 @@ def testar_deye():
 if __name__ == "__main__":
     # Altere aqui para escolher qual testar
     # testar_sungrow()
-    # testar_huawei()
-    testar_deye()
+    testar_huawei()
+    # testar_deye()
