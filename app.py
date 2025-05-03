@@ -19,7 +19,7 @@ from services.performance_service import get_performance_diaria
 
 # Instanciando clientes das APIs externas
 isolarcloud = ApiSolarCloud(settings.ISOLAR_USER, settings.ISOLAR_PASS)
-huawei = ApiHuawei(settings.HUAWEI_USER, settings.HUAWEI_PASS)
+# huawei = ApiHuawei(settings.HUAWEI_USER, settings.HUAWEI_PASS)
 deye = ApiDeye(settings.DEYE_USER, settings.DEYE_PASS, settings.DEYE_APPID, settings.DEYE_APPSECRET)
 
 # App FastAPI
@@ -54,7 +54,7 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
 # Rotas
 @app.get("/usina", response_model=List[UsinaModel])
 def listar_usinas(usuario_logado: User = Depends(get_current_user)):
-    usinas = huawei.get_usinas() + deye.get_usinas() + isolarcloud.get_usinas()
+    usinas = deye.get_usinas() + isolarcloud.get_usinas()
     return agrupar_usinas_por_nome(usinas)
 
 @app.get("/geracoes_diarias")
