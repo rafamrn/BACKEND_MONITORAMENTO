@@ -8,11 +8,11 @@ from pytz import timezone
 
 
 class ApiSolarCloud:
-    # accesskey = "4ey7zficrz2np518aqku2a8997ha1ebz" RMS
-    accesskey =  "hd3cgs3yjgx8cv7z47t8hpsxkig14qxa"
+    accesskey = "4ey7zficrz2np518aqku2a8997ha1ebz"
+    # accesskey =  "hd3cgs3yjgx8cv7z47t8hpsxkig14qxa"
     base_url = "https://gateway.isolarcloud.com.hk/openapi/"
-    # appkey = "03A0E186C87230B4DE9E028F90491A58" RMS
-    appkey = "C79920B2B9D982D2603539BFE7066052"
+    appkey = "03A0E186C87230B4DE9E028F90491A58"
+    # appkey = "C79920B2B9D982D2603539BFE7066052"
     headers = {
         "Content-Type": "application/json",
         "x-access-key": accesskey,
