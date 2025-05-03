@@ -87,6 +87,7 @@ class ApiSolarCloud:
 
         dados = response.json()
         dados_usinas = []
+        print(dados)
 
         try:
             for usina in dados["result_data"]["pageList"]:
