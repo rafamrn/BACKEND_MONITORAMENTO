@@ -1,9 +1,8 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from sqlalchemy.orm import Session
-from typing import List
-
+from typing import List, Optional
 from config.settings import settings
 from database import get_db
 from modelos import User
@@ -97,3 +96,15 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
 @app.get("/protegido")
 def rota_protegida(usuario_logado: User = Depends(get_current_user)):
     return {"msg": f"Bem-vindo, {usuario_logado.email}!"}
+
+@app.get("/api/geracao")
+def obter_geracao(
+    period: str = Query(..., regex="^(day|month|year)$"),
+    date: str = Query(...),
+    plant_id: int = Query(...),
+    usuario_logado: User = Depends(get_current_user)
+):
+    """
+    Retorna dados de geração com base na usina, data e tipo de período selecionado.
+    """
+    return isolarcloud.get_geracao(period=period, date=date, plant_id=plant_id)

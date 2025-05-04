@@ -4,6 +4,8 @@ import time
 from utils import parse_float
 from datetime import datetime, timedelta
 from pytz import timezone
+from typing import Optional
+
 
 class ApiSolarCloud:
     base_url = "https://gateway.isolarcloud.com.hk/openapi/"
@@ -131,11 +133,43 @@ class ApiSolarCloud:
 # OBTENDO PS_KEYS E SERIAL NUMBER E DEMAIS DADOS
     
 
-    def get_geracao(self):
+    def get_geracao(self, period: Optional[str] = None, date: Optional[str] = None, plant_id: Optional[int] = None):
         print("Chamando get_geracao() no Railway 🚀")
         brasil = timezone("America/Sao_Paulo")
         agora = datetime.now(brasil)
 
+        if period == "day" and date and plant_id:
+            if not self.token_cache:
+                self.login_solarcloud()
+
+            if not self.usinas_cache:
+                self.get_usinas()
+
+            print(f"🔍 Buscando geração do dia {date} para plant_id={plant_id}")
+            return self.get_geracao_dia(data=date, plant_id=plant_id)
+
+        # Demais chamadas padrão da dashboard (sem filtro específico)
+        if self._geracao_cache and self._geracao_cache_timestamp:
+            if (agora - self._geracao_cache_timestamp) < timedelta(minutes=10):
+                print("🔁 Retornando geração do cache diário")
+                return {
+                    "diario": self._geracao_cache,
+                    "setedias": self.geracao7_cache or []
+                }
+
+        if not self.token_cache:
+            self.login_solarcloud()
+
+        if not self.usinas_cache:
+            self.get_usinas()
+
+        self.anteontem = (agora - timedelta(days=2)).strftime("%Y%m%d")
+        self.ontem = (agora - timedelta(days=1)).strftime("%Y%m%d")
+        sete_dias_atras = (agora - timedelta(days=8)).strftime("%Y%m%d")
+        self.mes_atras = (agora - timedelta(days=31)).strftime("%Y%m%d")
+
+
+        # ✅ Lógica de cache para resposta padrão da dashboard
         if self._geracao_cache and self._geracao_cache_timestamp:
             if (agora - self._geracao_cache_timestamp) < timedelta(minutes=10):
                 print("🔁 Retornando geração do cache diário")
@@ -187,7 +221,7 @@ class ApiSolarCloud:
                 for device in device_list:
                     ps_key = device.get("ps_key")
 
-                    # Geração diária (anteontem a ontem)
+                    # Geração diária
                     body_energy_1d = {
                         "appkey": self.appkey,
                         "token": self.token_cache,
@@ -208,7 +242,6 @@ class ApiSolarCloud:
                             lista_p1 = dados1[chave]["p1"]
                             valor_str = lista_p1[0].get("2", "0")
                             energia_total = float(valor_str)
-
                             energia_por_usina[ps_id] = energia_por_usina.get(ps_id, 0.0) + energia_total
                         except Exception as e:
                             print(f"Erro extraindo geração 1d de {ps_key}: {e}")
@@ -233,7 +266,6 @@ class ApiSolarCloud:
                             chave = next(iter(dados2))
                             lista_p1 = dados2[chave]["p1"]
                             soma_7dias = sum(float(p.get("2", "0")) for p in lista_p1)
-
                             energia_7dias_por_usina[ps_id] = energia_7dias_por_usina.get(ps_id, 0.0) + soma_7dias
                         except Exception as e:
                             print(f"Erro extraindo geração 7d de {ps_key}: {e}")
@@ -258,7 +290,6 @@ class ApiSolarCloud:
                             chave = next(iter(dados3))
                             lista_p2 = dados3[chave]["p1"]
                             soma_30dias = sum(float(p.get("2", "0")) for p in lista_p2)
-
                             energia_30dias_por_usina[ps_id] = energia_30dias_por_usina.get(ps_id, 0.0) + soma_30dias
                         except Exception as e:
                             print(f"Erro extraindo geração 30d de {ps_key}: {e}")
@@ -311,3 +342,106 @@ class ApiSolarCloud:
                 "por_usina": ps_30dias_energy
             }
         }
+
+    
+    #OBTENDO GERAÇÃO HISTÓRICA
+
+    def get_geracao_dia(self, data: str, ps_key: str = None, plant_id: int = None):
+        """
+        Consulta a potência p24 a cada 15min, somando os dados de todos os ps_key da usina (caso existam vários).
+        """
+        from datetime import datetime, timedelta
+        from pytz import timezone
+        import time
+        import requests
+        from collections import defaultdict
+
+        brasil = timezone("America/Sao_Paulo")
+        data_dt = datetime.strptime(data, "%Y-%m-%d").replace(tzinfo=brasil)
+
+        if not self.token_cache or time.time() - self.token_timestamp > 600:
+            self.login_solarcloud()
+
+        if not self.usinas_cache:
+            self.get_usinas()
+
+        url = self.base_url + "getDeviceList"
+        ps_id = str(plant_id)
+
+        # Obtem todos os ps_key dessa usina
+        body_device = {
+            "appkey": self.appkey,
+            "token": self.token_cache,
+            "curPage": 1,
+            "size": 100,
+            "ps_id": ps_id,
+            "device_type_list": [1],
+            "lang": "_pt_BR"
+        }
+
+        res_device = self._post_with_auth(url, body_device)
+        if res_device.status_code != 200:
+            raise Exception(f"Erro ao obter ps_keys da usina {plant_id}")
+
+        data_device = res_device.json()
+        dispositivos = data_device["result_data"]["pageList"]
+        ps_keys = [d.get("ps_key") for d in dispositivos if d.get("ps_key")]
+
+        if not ps_keys:
+            raise ValueError(f"Nenhum ps_key encontrado para a usina {plant_id}")
+
+        print(f"✅ ps_keys encontrados: {ps_keys}")
+
+        # Armazena a soma por horário
+        dados_por_hora = defaultdict(float)
+        
+        for key in ps_keys:
+            for bloco in range(0, 24, 3):
+                inicio = data_dt.replace(hour=bloco, minute=0, second=0)
+                fim = inicio + timedelta(hours=3, seconds=-1)
+
+                start_str = inicio.strftime("%Y%m%d%H%M%S")
+                end_str = fim.strftime("%Y%m%d%H%M%S")
+
+                body = {
+                    "appkey": self.appkey,
+                    "token": self.token_cache,
+                    "start_time_stamp": start_str,
+                    "end_time_stamp": end_str,
+                    "minute_interval": 15,
+                    "points": "p24",
+                    "ps_key_list": [key],
+                    "is_get_data_acquisition_time": "1"
+                }
+
+                print(f"⏱️ Requisição: {start_str} → {end_str}")
+                res = requests.post(self.base_url + "getDevicePointMinuteDataList", json=body, headers=self.headers)
+
+                if res.status_code != 200:
+                    print(f"❌ Erro HTTP ({res.status_code}) no bloco {start_str} - {end_str}")
+                    continue
+
+                res_json = res.json()
+                if res_json.get("result_code") != "1" or "result_data" not in res_json:
+                    print(f"⚠️ Falha API no bloco {start_str} - {end_str}: {res_json}")
+                    continue
+
+                for item in res_json["result_data"].get(key, []):
+                    timestamp = item.get("time_stamp")
+                    potencia = item.get("p24", "0")
+
+                    if timestamp:
+                        horario = timestamp[8:10] + ":" + timestamp[10:12]
+                        try:
+                            dados_por_hora[horario] += float(potencia)
+                        except ValueError:
+                            print(f"⚠️ Valor inválido de potência: {potencia}")
+
+        # Converte para lista ordenada
+        resultado = [
+            {"time": horario, "production": round(valor / 1000, 2)}
+            for horario, valor in sorted(dados_por_hora.items())
+        ]
+
+        return resultado
+
