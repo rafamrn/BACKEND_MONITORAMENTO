@@ -108,3 +108,17 @@ def obter_geracao(
     Retorna dados de geração com base na usina, data e tipo de período selecionado.
     """
     return isolarcloud.get_geracao(period=period, date=date, plant_id=plant_id)
+
+@app.get("/api/geracao/mensal")
+def obter_geracao_mensal(
+    date: str = Query(..., regex=r"^\d{4}-\d{2}$"),  # exemplo: "2025-05"
+    plant_id: int = Query(...),
+    usuario_logado: User = Depends(get_current_user)
+):
+    """
+    Retorna geração mensal (p1) da usina com base em um mês específico.
+    """
+    try:
+        return isolarcloud.get_geracao_mes(data=date, plant_id=plant_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

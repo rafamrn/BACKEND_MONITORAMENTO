@@ -48,7 +48,7 @@ def testar_sungrow():
     data_str = date.today().strftime("%Y-%m-%d")
 
     print(f"✅ ps_key encontrado: {ps_key}")
-    geracao = api.get_geracao_dia(data=data_str, ps_key=ps_key)
+    geracao = api.get_geracao_mes(data=data_str[:7], plant_id=ps_id)
 
     for ponto in geracao:
         print(ponto)

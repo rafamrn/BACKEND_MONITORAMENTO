@@ -5,6 +5,7 @@ from utils import parse_float
 from datetime import datetime, timedelta
 from pytz import timezone
 from typing import Optional
+from calendar import monthrange
 
 
 class ApiSolarCloud:
@@ -453,4 +454,92 @@ class ApiSolarCloud:
         return {
             "p1": round(max(geracoes_p1) / 1000, 2) if geracoes_p1 else None,
             "diario": resultado
+        }
+
+
+    def get_geracao_mes(self, data: str, ps_key: str = None, plant_id: int = None):
+        """
+        Consulta a geração diária (p1) de cada dia do mês especificado (formato YYYY-MM) para a usina informada,
+        retornando também a soma total do mês.
+        """
+
+        if not self.token_cache or time.time() - self.token_timestamp > 600:
+            self.login_solarcloud()
+
+        if not ps_key:
+            if not self.usinas_cache:
+                self.get_usinas()
+
+            url = self.base_url + "getDeviceList"
+            body = {
+                "appkey": self.appkey,
+                "token": self.token_cache,
+                "curPage": 1,
+                "size": 10,
+                "ps_id": str(plant_id),
+                "device_type_list": [1],
+                "lang": "_pt_BR"
+            }
+
+            res = self._post_with_auth(url, body)
+            data_device = res.json()
+            inversores = data_device.get("result_data", {}).get("pageList", [])
+
+            if not inversores:
+                raise ValueError("Nenhum inversor encontrado para essa usina.")
+
+            ps_key = inversores[0].get("ps_key")
+            if not ps_key:
+                raise ValueError("ps_key não encontrado no inversor.")
+
+        # Datas no formato esperado
+        ano, mes = data.split("-")
+        _, ultimo_dia = monthrange(int(ano), int(mes))
+        start_time = f"{ano}{mes}01"
+        end_time = f"{ano}{mes}{str(ultimo_dia).zfill(2)}"
+
+        body = {
+            "token": self.token_cache,
+            "appkey": self.appkey,
+            "data_point": "p1",
+            "start_time": start_time,
+            "end_time": end_time,
+            "query_type": "1",
+            "data_type": "2",
+            "order": "0",
+            "ps_key_list": [ps_key]
+        }
+
+        res = requests.post(
+            self.base_url + "getDevicePointsDayMonthYearDataList",
+            json=body,
+            headers=self.headers
+        )
+
+        res_json = res.json()
+
+        if res.status_code != 200 or res_json.get("result_code") != "1":
+            raise Exception(f"Erro ao buscar geração mensal: {res_json}")
+
+        result_data = res_json.get("result_data")
+        if not result_data or ps_key not in result_data:
+            raise ValueError(f"Nenhum dado de geração encontrado para o ps_key {ps_key}. Resposta: {res_json}")
+
+        dados = result_data[ps_key].get("p1", [])
+
+        resultado = []
+        soma_total = 0
+
+        for item in dados:
+            if "time_stamp" in item and "2" in item:
+                valor = round(float(item["2"]) / 1000, 2)
+                resultado.append({
+                    "date": f"{item['time_stamp'][:4]}-{item['time_stamp'][4:6]}-{item['time_stamp'][6:8]}",
+                    "production": valor
+                })
+                soma_total += valor
+
+        return {
+            "mensal": resultado,
+            "total": round(soma_total, 2)
         }
