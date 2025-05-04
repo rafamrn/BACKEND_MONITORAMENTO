@@ -349,6 +349,7 @@ class ApiSolarCloud:
     def get_geracao_dia(self, data: str, ps_key: str = None, plant_id: int = None):
         """
         Consulta a potência p24 a cada 15min, somando os dados de todos os ps_key da usina (caso existam vários).
+        Também busca o ponto p1 (geração diária total acumulada).
         """
         from datetime import datetime, timedelta
         from pytz import timezone
@@ -392,9 +393,9 @@ class ApiSolarCloud:
 
         print(f"✅ ps_keys encontrados: {ps_keys}")
 
-        # Armazena a soma por horário
         dados_por_hora = defaultdict(float)
-        
+        geracoes_p1 = []
+
         for key in ps_keys:
             for bloco in range(0, 24, 3):
                 inicio = data_dt.replace(hour=bloco, minute=0, second=0)
@@ -409,7 +410,7 @@ class ApiSolarCloud:
                     "start_time_stamp": start_str,
                     "end_time_stamp": end_str,
                     "minute_interval": 15,
-                    "points": "p24",
+                    "points": "p24,p1",  # ✅ inclui p1
                     "ps_key_list": [key],
                     "is_get_data_acquisition_time": "1"
                 }
@@ -429,6 +430,7 @@ class ApiSolarCloud:
                 for item in res_json["result_data"].get(key, []):
                     timestamp = item.get("time_stamp")
                     potencia = item.get("p24", "0")
+                    energia_total = item.get("p1")  # ✅ captura p1
 
                     if timestamp:
                         horario = timestamp[8:10] + ":" + timestamp[10:12]
@@ -437,17 +439,18 @@ class ApiSolarCloud:
                         except ValueError:
                             print(f"⚠️ Valor inválido de potência: {potencia}")
 
-        # Converte para lista ordenada
+                    if energia_total:
+                        try:
+                            geracoes_p1.append(float(energia_total))
+                        except ValueError:
+                            print(f"⚠️ Valor inválido de p1: {energia_total}")
+
         resultado = [
             {"time": horario, "production": round(valor / 1000, 2)}
             for horario, valor in sorted(dados_por_hora.items())
         ]
 
-        # Soma total da produção (em kWh)
-        total_producao = round(sum(dados_por_hora.values()) / 1000, 2)
-
         return {
-            "total": total_producao,
+            "p1": round(max(geracoes_p1) / 1000, 2) if geracoes_p1 else None,
             "diario": resultado
         }
-
