@@ -8,6 +8,8 @@ _performance_diaria_cache = None
 _performance_diaria_cache_timestamp = None
 _performance_7dias_cache = None
 _performance_7dias_cache_timestamp = None
+_performance_30dias_cache = None
+_performance_30dias_cache_timestamp = None
 
 # Performance diária
 def calcular_performance_diaria(plant_id: int, energia_gerada: float, db: Session):
@@ -76,6 +78,37 @@ def calcular_performance_7dias(plant_id: int, energia_gerada: float, db: Session
         "performance_percentual": round(performance * 100)
     }
 
+# Performance 30 dias
+def calcular_performance_30dias(plant_id: int, energia_gerada: float, db: Session):
+    hoje = datetime.now()
+    mes = hoje.month
+    ano = hoje.year
+
+    projecao = db.query(MonthlyProjection).filter_by(
+        plant_id=plant_id,
+        month=mes,
+        year=ano
+    ).first()
+
+    if not projecao or projecao.projection_kwh == 0:
+        return {
+            "plant_id": plant_id,
+            "performance": None,
+            "mensagem": "Projeção mensal não encontrada ou igual a 0"
+        }
+
+    dias_do_mes = calendar.monthrange(ano, mes)[1]
+    performance = energia_gerada / projecao.projection_kwh
+
+    return {
+        "plant_id": plant_id,
+        "mes": mes,
+        "dias_do_mes": dias_do_mes,
+        "projecao_mensal": projecao.projection_kwh,
+        "gerado_30dias": energia_gerada,
+        "performance_percentual": round(performance * 100)
+    }
+
 # Obter performance diária
 def get_performance_diaria(isolarcloud, deye, db: Session):
     global _performance_diaria_cache, _performance_diaria_cache_timestamp
@@ -137,4 +170,37 @@ def get_performance_7dias(isolarcloud, db: Session):
     _performance_7dias_cache = resultados
     _performance_7dias_cache_timestamp = agora
     print("✅ Performance de 7 dias salva em cache")
+    return resultados
+
+
+# Obter performance 30 dias
+def get_performance_30dias(isolarcloud, db: Session):
+    global _performance_30dias_cache, _performance_30dias_cache_timestamp
+
+    agora = datetime.now()
+    if _performance_30dias_cache and _performance_30dias_cache_timestamp:
+        if (agora - _performance_30dias_cache_timestamp) < timedelta(minutes=10):
+            print("🔁 Retornando performance de 30 dias do cache")
+            return _performance_30dias_cache
+
+    print("⚙️ Calculando nova performance dos últimos 30 dias...")
+    resultado_geracao_30_dias = isolarcloud.get_geracao()
+    print("Resultado da geração:", resultado_geracao_30_dias, type(resultado_geracao_30_dias))
+
+    if not isinstance(resultado_geracao_30_dias, dict):
+        raise ValueError("⚠️ Erro: get_geracao() deve retornar um dicionário com as chave 'mensal'.")
+
+    geracoes = resultado_geracao_30_dias.get("mensal", {}).get("por_usina", [])
+    resultados = []
+
+    for g in geracoes:
+        ps_id = g.get("ps_id")
+        energia = g.get("energia_gerada_kWh")
+        if ps_id and energia is not None:
+            resultado = calcular_performance_30dias(ps_id, energia, db)
+            resultados.append(resultado)
+
+    _performance_30dias_cache = resultados
+    _performance_30dias_cache_timestamp = agora
+    print("✅ Performance de 30 dias salva em cache")
     return resultados

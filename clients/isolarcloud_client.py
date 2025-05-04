@@ -154,9 +154,11 @@ class ApiSolarCloud:
         self.anteontem = (agora - timedelta(days=2)).strftime("%Y%m%d")
         self.ontem = (agora - timedelta(days=1)).strftime("%Y%m%d")
         sete_dias_atras = (agora - timedelta(days=8)).strftime("%Y%m%d")
+        self.mes_atras = (agora - timedelta(days=31)).strftime("%Y%m%d")
 
         energia_por_usina = {}
         energia_7dias_por_usina = {}
+        energia_30dias_por_usina = {}
 
         for usina in self.usinas_cache:
             ps_id = usina.get("ps_id")
@@ -237,6 +239,31 @@ class ApiSolarCloud:
                         except Exception as e:
                             print(f"Erro extraindo geração 7d de {ps_key}: {e}")
 
+                    # Geração 30 dias
+                    body_energy_mes = {
+                        "appkey": self.appkey,
+                        "token": self.token_cache,
+                        "data_point": "p1",
+                        "end_time": self.ontem,
+                        "query_type": "1",
+                        "start_time": self.mes_atras,
+                        "ps_key_list": [ps_key],
+                        "data_type": "2",
+                        "order": "0"
+                    }
+
+                    r3 = self._post_with_auth(self.base_url + "getDevicePointsDayMonthYearDataList", body_energy_mes)
+                    if r3.status_code == 200:
+                        try:
+                            dados3 = r3.json()["result_data"]
+                            chave = next(iter(dados3))
+                            lista_p2 = dados3[chave]["p1"]
+                            soma_30dias = sum(float(p.get("2", "0")) for p in lista_p2)
+
+                            energia_30dias_por_usina[ps_id] = energia_30dias_por_usina.get(ps_id, 0.0) + soma_30dias
+                        except Exception as e:
+                            print(f"Erro extraindo geração 30d de {ps_key}: {e}")
+
             except Exception as e:
                 print(f"Erro processando usina {ps_id}: {e}")
                 continue
@@ -259,13 +286,29 @@ class ApiSolarCloud:
             for ps_id, valor in energia_7dias_por_usina.items()
         ]
 
+        ps_30dias_energy = [
+            {
+                "ps_id": ps_id,
+                "periodo": f"{self.mes_atras} a {self.ontem}",
+                "energia_gerada_kWh": round(valor / 1000, 2)
+            }
+            for ps_id, valor in energia_30dias_por_usina.items()
+        ]
+
+        total_30dias = sum(item["energia_gerada_kWh"] for item in ps_30dias_energy)
+
         # Salvar no cache
         self._geracao_cache = ps_daily_energy
         self.geracao7_cache = ps_7dias_energy
+        self.geracao30_cache = ps_30dias_energy
         self._geracao_cache_timestamp = agora
 
         print("✅ Geração salva em cache")
         return {
             "diario": ps_daily_energy,
-            "setedias": ps_7dias_energy
+            "setedias": ps_7dias_energy,
+            "mensal": {
+                "total": round(total_30dias, 2),
+                "por_usina": ps_30dias_energy
+            }
         }
