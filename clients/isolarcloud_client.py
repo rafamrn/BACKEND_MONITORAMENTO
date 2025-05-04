@@ -443,5 +443,11 @@ class ApiSolarCloud:
             for horario, valor in sorted(dados_por_hora.items())
         ]
 
-        return resultado
+        # Soma total da produção (em kWh)
+        total_producao = round(sum(dados_por_hora.values()) / 1000, 2)
+
+        return {
+            "total": total_producao,
+            "diario": resultado
+        }
 
