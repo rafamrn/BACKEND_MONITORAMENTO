@@ -123,7 +123,7 @@ def get_performance_diaria(isolarcloud, deye, db: Session):
 
     # Coleta dos dados
     resultado_geracao_isolarcloud = isolarcloud.get_geracao().get("diario", [])
-    resultado_geracao_deye = deye.get_geracao()
+    resultado_geracao_deye = deye.get_geracao().get("diario", [])
 
     geracoes = resultado_geracao_isolarcloud + resultado_geracao_deye
     resultados = []
