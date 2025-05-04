@@ -67,11 +67,11 @@ def performance_diaria(db: Session = Depends(get_db)):
 
 @app.get("/performance_7dias")
 def performance_7dias(db: Session = Depends(get_db)):
-    return get_performance_7dias(isolarcloud, db)
+    return get_performance_7dias(isolarcloud, deye, db)
 
 @app.get("/performance_30dias")
 def performance_30dias(db: Session = Depends(get_db)):
-    return get_performance_30dias(isolarcloud, db)
+    return get_performance_30dias(isolarcloud, deye, db)
 
 
 @app.post("/register")

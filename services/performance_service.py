@@ -123,7 +123,7 @@ def get_performance_diaria(isolarcloud, deye, db: Session):
 
     # Coleta dos dados
     resultado_geracao_isolarcloud = isolarcloud.get_geracao().get("diario", [])
-    resultado_geracao_deye = deye.get_geracao()  # já é lista
+    resultado_geracao_deye = deye.get_geracao()
 
     geracoes = resultado_geracao_isolarcloud + resultado_geracao_deye
     resultados = []
@@ -141,7 +141,7 @@ def get_performance_diaria(isolarcloud, deye, db: Session):
     return resultados
 
 # Obter performance 7 dias
-def get_performance_7dias(isolarcloud, db: Session):
+def get_performance_7dias(isolarcloud, deye, db: Session):
     global _performance_7dias_cache, _performance_7dias_cache_timestamp
 
     agora = datetime.now()
@@ -151,13 +151,15 @@ def get_performance_7dias(isolarcloud, db: Session):
             return _performance_7dias_cache
 
     print("⚙️ Calculando nova performance dos últimos 7 dias...")
-    resultado_geracao = isolarcloud.get_geracao()
-    print("Resultado da geração:", resultado_geracao, type(resultado_geracao))
 
-    if not isinstance(resultado_geracao, dict):
-        raise ValueError("⚠️ Erro: get_geracao() deve retornar um dicionário com as chaves 'diario' e 'setedias'.")
+    # Coleta de Dados
+    resultado_geracao_isolarcloud = isolarcloud.get_geracao()
+    resultado_geracao_deye = deye.get_geracao()
 
-    geracoes = resultado_geracao.get("setedias", [])
+    if not isinstance(resultado_geracao_isolarcloud, dict) or not isinstance(resultado_geracao_deye, dict):
+        raise ValueError("⚠️ Erro: get_geracao() deve retornar dicionários válidos.")
+
+    geracoes = resultado_geracao_isolarcloud.get("setedias", []) + resultado_geracao_deye.get("setedias", [])
     resultados = []
 
     for g in geracoes:
@@ -172,9 +174,8 @@ def get_performance_7dias(isolarcloud, db: Session):
     print("✅ Performance de 7 dias salva em cache")
     return resultados
 
-
 # Obter performance 30 dias
-def get_performance_30dias(isolarcloud, db: Session):
+def get_performance_30dias(isolarcloud, deye, db: Session):
     global _performance_30dias_cache, _performance_30dias_cache_timestamp
 
     agora = datetime.now()
@@ -184,13 +185,17 @@ def get_performance_30dias(isolarcloud, db: Session):
             return _performance_30dias_cache
 
     print("⚙️ Calculando nova performance dos últimos 30 dias...")
-    resultado_geracao_30_dias = isolarcloud.get_geracao()
-    print("Resultado da geração:", resultado_geracao_30_dias, type(resultado_geracao_30_dias))
 
-    if not isinstance(resultado_geracao_30_dias, dict):
-        raise ValueError("⚠️ Erro: get_geracao() deve retornar um dicionário com as chave 'mensal'.")
+    resultado_geracao_isolarcloud = isolarcloud.get_geracao()
+    resultado_geracao_deye = deye.get_geracao()
 
-    geracoes = resultado_geracao_30_dias.get("mensal", {}).get("por_usina", [])
+    if not isinstance(resultado_geracao_isolarcloud, dict) or not isinstance(resultado_geracao_deye, dict):
+        raise ValueError("⚠️ Erro: get_geracao() deve retornar dicionários com a chave 'mensal'.")
+
+    geracoes_isolar = resultado_geracao_isolarcloud.get("mensal", {}).get("por_usina", [])
+    geracoes_deye = resultado_geracao_deye.get("mensal", {}).get("por_usina", [])
+
+    geracoes = geracoes_isolar + geracoes_deye
     resultados = []
 
     for g in geracoes:
@@ -204,3 +209,6 @@ def get_performance_30dias(isolarcloud, db: Session):
     _performance_30dias_cache_timestamp = agora
     print("✅ Performance de 30 dias salva em cache")
     return resultados
+
+
+

@@ -154,7 +154,6 @@ class ApiDeye:
         return dados_usinas
     
     # OBTENDO PS_KEYS E SERIAL NUMBER E DEMAIS DADOS
-    
 
     def get_geracao(self):
         print("Chamando get_geracao() para Deye 🚀")
@@ -178,55 +177,92 @@ class ApiDeye:
             'Authorization': f"bearer {self.accesstoken}"
         }
 
-        anteontem = (agora - timedelta(days=2)).strftime("%Y-%m-%d")
+        hoje = agora.strftime("%Y-%m-%d")
         ontem = (agora - timedelta(days=1)).strftime("%Y-%m-%d")
+        anteontem = (agora - timedelta(days=2)).strftime("%Y-%m-%d")
+        sete_dias_atras = (agora - timedelta(days=8)).strftime("%Y-%m-%d")
+        trinta_dias_atras = (agora - timedelta(days=31)).strftime("%Y-%m-%d")
 
-        ps_daily_energy = []
+        diario = []
+        setedias = []
+        mensal = []
 
         for usina in usinas:
             ps_id = usina.get("ps_id")
             if not ps_id:
                 continue
 
+
+            #DIÁRIO
             url = self.base_url + "station/history"
-            body = {
+            body_diario = {
                 "stationId": ps_id,
                 "endAt": ontem,
                 "granularity": 2,
                 "startAt": anteontem,
             }
 
-            print(f"🔁 Consultando geração da usina Deye {ps_id}")
-            response = self.session.post(url, json=body, headers=headers)
+            #SEMANAL
+            body_7dias = {
+                "stationId": ps_id,
+                "endAt": ontem,
+                "granularity": 2,
+                "startAt": sete_dias_atras,
+        }
 
-            if response.status_code != 200:
-                print(f"Erro ao buscar energia da usina {ps_id}: {response.text}")
-                continue
+            body_30dias = {
+                "stationId": ps_id,
+                "endAt": ontem,
+                "granularity": 2,
+                "startAt": trinta_dias_atras,
+            }
 
             try:
-                data = response.json()
-                station_items = data.get("stationDataItems", [])
+            
+                # Diária
+                res_d = self.session.post(url, json=body_diario, headers=headers)
+                if res_d.status_code == 200:
+                    data = res_d.json()
+                    items = data.get("stationDataItems", [])
+                    if items:
+                        v = round(float(items[0].get("generationValue", 0.0)), 2)
+                        diario.append({"ps_id": ps_id, "data": ontem, "energia_gerada_kWh": v})
 
-                if not station_items:
-                    continue
+                # 7 dias
+                res_7 = self.session.post(url, json=body_7dias, headers=headers)
+                if res_7.status_code == 200:
+                    data = res_7.json()
+                    items = data.get("stationDataItems", [])
+                    soma_7 = round(sum(float(p.get("generationValue", 0.0)) for p in items), 2)
+                    setedias.append({"ps_id": ps_id, "periodo": f"{sete_dias_atras} a {ontem}", "energia_gerada_kWh": soma_7})
 
-                generation_value = station_items[0].get("generationValue", 0.0)
-                energia_kwh = round(float(generation_value), 2)
-
-                ps_daily_energy.append({
-                    "ps_id": ps_id,
-                    "data": ontem,
-                    "energia_gerada_kWh": energia_kwh
-                })
+                # 30 dias
+                res_30 = self.session.post(url, json=body_30dias, headers=headers)
+                if res_30.status_code == 200:
+                    data = res_30.json()
+                    items = data.get("stationDataItems", [])
+                    soma_30 = round(sum(float(p.get("generationValue", 0.0)) for p in items), 2)
+                    mensal.append({"ps_id": ps_id, "periodo": f"{trinta_dias_atras} a {ontem}", "energia_gerada_kWh": soma_30})
 
             except Exception as e:
                 import traceback
-                print(f"❌ Erro ao extrair energia da usina {ps_id}: {e}")
+                print(f"❌ Erro ao consultar usina {ps_id}: {e}")
                 traceback.print_exc()
                 continue
 
-        self._geracao_cache = ps_daily_energy
+        total_30dias = sum(item["energia_gerada_kWh"] for item in mensal)
+
+        resultado = {
+            "diario": diario,
+            "setedias": setedias,
+            "mensal": {
+                "total": round(total_30dias, 2),
+                "por_usina": mensal
+            }
+        }
+
+        self._geracao_cache = resultado
         self._geracao_cache_timestamp = agora
-        print("✅ Geração salva em cache")
-        print(f"✅ Total de registros obtidos: {len(ps_daily_energy)}")
-        return ps_daily_energy
+
+        print("✅ Geração Deye salva em cache")
+        return resultado
