@@ -66,6 +66,6 @@ def testar_deye():
 
 if __name__ == "__main__":
     # Altere aqui para escolher qual testar
-    testar_sungrow()
-    # testar_huawei()
+    # testar_sungrow()
+    testar_huawei()
     # testar_deye()

@@ -53,24 +53,24 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
 # Rotas
 @app.get("/usina", response_model=List[UsinaModel])
 def listar_usinas(usuario_logado: User = Depends(get_current_user)):
-    usinas = deye.get_usinas() + isolarcloud.get_usinas() + huawei.get_usinas()
+    usinas = deye.get_usinas() + isolarcloud.get_usinas()
     return agrupar_usinas_por_nome(usinas)
 
 @app.get("/geracoes_diarias")
 def listar_geracoes_diarias():
-    return isolarcloud.get_geracao() + deye.get_geracao() + huawei.get_geracao()
+    return isolarcloud.get_geracao() + deye.get_geracao()
 
 @app.get("/performance_diaria")
 def performance_diaria(db: Session = Depends(get_db)):
-    return get_performance_diaria(isolarcloud, huawei, deye, db)
+    return get_performance_diaria(isolarcloud, deye, db)
 
 @app.get("/performance_7dias")
 def performance_7dias(db: Session = Depends(get_db)):
-    return get_performance_7dias(isolarcloud, huawei, deye, db)
+    return get_performance_7dias(isolarcloud, deye, db)
 
 @app.get("/performance_30dias")
 def performance_30dias(db: Session = Depends(get_db)):
-    return get_performance_30dias(isolarcloud, huawei, deye, db)
+    return get_performance_30dias(isolarcloud, deye, db)
 
 
 @app.post("/register")
