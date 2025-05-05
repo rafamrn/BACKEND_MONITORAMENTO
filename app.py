@@ -74,6 +74,16 @@ def performance_7dias(db: Session = Depends(get_db)):
 def performance_30dias(db: Session = Depends(get_db)):
     return get_performance_30dias(isolarcloud, deye, db)
 
+@app.get("/dados_tecnicos")
+def obter_dados_tecnicos(
+    plant_id: int = Query(...),
+    usuario_logado: User = Depends(get_current_user)
+):
+    """
+    Retorna dados técnicos com base na usina.
+    """
+    return isolarcloud.get_dados_tecnicos(plant_id=plant_id)
+
 
 @app.post("/register")
 def register(user: UserCreate, db: Session = Depends(get_db)):

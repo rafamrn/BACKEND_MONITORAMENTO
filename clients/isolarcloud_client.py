@@ -32,7 +32,7 @@ class ApiSolarCloud:
         
 
     def login_solarcloud(self):
-        if self.token_cache and time.time() - self.token_timestamp < 600:  # 10 minutos de cache
+        if self.token_cache:
             return self.token_cache
         
         url = self.base_url + "login"
@@ -73,7 +73,7 @@ class ApiSolarCloud:
         return response
 
     def get_usinas(self):
-        if self.usinas_cache and time.time() - self.usinas_timestamp < 600:  # Cache de usinas por 10 minutos
+        if self.usinas_cache:
             return self.usinas_cache
 
         url = self.base_url + "getPowerStationList"
@@ -361,7 +361,7 @@ class ApiSolarCloud:
         brasil = timezone("America/Sao_Paulo")
         data_dt = datetime.strptime(data, "%Y-%m-%d").replace(tzinfo=brasil)
 
-        if not self.token_cache or time.time() - self.token_timestamp > 600:
+        if not self.token_cache or time.time():
             self.login_solarcloud()
 
         if not self.usinas_cache:
@@ -553,7 +553,7 @@ class ApiSolarCloud:
         import time
         from calendar import monthrange
 
-        if not self.token_cache or time.time() - self.token_timestamp > 600:
+        if not self.token_cache or time.time():
             self.login_solarcloud()
 
         if not ps_key:
@@ -632,3 +632,62 @@ class ApiSolarCloud:
             "anual": resultado,
             "total": round(soma_total, 2)
         }
+
+
+    def get_dados_tecnicos(self, ps_key: str = None, plant_id: int = None):
+
+        if not self.token_cache:
+            self.login_solarcloud()
+
+        if not ps_key:
+
+            if not self.usinas_cache:
+                self.get_usinas()
+
+            url = self.base_url + "getDeviceList"
+            body = {
+                "appkey": self.appkey,
+                "token": self.token_cache,
+                "curPage": 1,
+                "size": 10,
+                "ps_id": str(plant_id),
+                "device_type_list": [1],
+                "lang": "_pt_BR"
+            }
+
+            res = self._post_with_auth(url, body)
+            data_device = res.json()
+            inversores = data_device.get("result_data", {}).get("pageList", [])
+
+            if not inversores:
+                raise ValueError("Nenhum inversor encontrado para essa usina.")
+
+            ps_key = inversores[0].get("ps_key")
+            if not ps_key:
+                raise ValueError("ps_key não encontrado no inversor.")          
+            
+        body = {
+            "appkey": self.appkey,
+            "token": self.token_cache,
+            "device_type":1,
+            "point_id_list": ["18", "19", "20", "21", "22", "23", "27", "4", "96", "97", "98", "99", "100", "101", "102", "103", "104", "105", "106", "107", "108", "109", "110", "111", "112", "113", "7166", "7167", "7168", "7169", "7170", "7171", "70", "71", "72", "73", "74", "75", "76", "77", "78", "79", "80", "81", "82", "83", "84", "85", "92", "93", "313", "314", "315", "316", "317", "318"],
+            "ps_key_list": [ps_key]
+        }
+        res = requests.post(
+            self.base_url + "getDeviceRealTimeData",
+            json=body,
+            headers=self.headers
+        )
+
+        res_json = res.json()
+
+        if res.status_code != 200 or res_json.get("result_code") != "1":
+            raise Exception(f"Erro ao buscar geração anual: {res_json}")
+
+        dados = res_json["result_data"]["device_point_list"]
+        device_points = [
+        {k: v for k, v in item["device_point"].items() if v is not None}
+        for item in dados
+        ]
+
+        return {"resultados": device_points}
