@@ -124,3 +124,17 @@ def obter_geracao_mensal(
         return isolarcloud.get_geracao_mes(data=date, plant_id=plant_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+@app.get("/api/geracao/anual")
+def obter_geracao_anual(
+    year: str = Query(..., regex=r"^\d{4}$"),  # Ex: "2025"
+    plant_id: int = Query(...),
+    usuario_logado: User = Depends(get_current_user)
+):
+    """
+    Retorna a geração mensal (p1) para cada mês do ano informado.
+    """
+    try:
+        return isolarcloud.get_geracao_ano(ano=year, plant_id=plant_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

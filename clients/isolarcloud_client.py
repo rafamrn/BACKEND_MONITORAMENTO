@@ -543,3 +543,92 @@ class ApiSolarCloud:
             "mensal": resultado,
             "total": round(soma_total, 2)
         }
+    
+    def get_geracao_ano(self, ano: str, ps_key: str = None, plant_id: int = None):
+        """
+        Consulta a geração mensal (p1) de cada mês do ano especificado (formato YYYY) para a usina informada,
+        retornando também a soma total do ano.
+        """
+        import requests
+        import time
+        from calendar import monthrange
+
+        if not self.token_cache or time.time() - self.token_timestamp > 600:
+            self.login_solarcloud()
+
+        if not ps_key:
+            if not self.usinas_cache:
+                self.get_usinas()
+
+            url = self.base_url + "getDeviceList"
+            body = {
+                "appkey": self.appkey,
+                "token": self.token_cache,
+                "curPage": 1,
+                "size": 10,
+                "ps_id": str(plant_id),
+                "device_type_list": [1],
+                "lang": "_pt_BR"
+            }
+
+            res = self._post_with_auth(url, body)
+            data_device = res.json()
+            inversores = data_device.get("result_data", {}).get("pageList", [])
+
+            if not inversores:
+                raise ValueError("Nenhum inversor encontrado para essa usina.")
+
+            ps_key = inversores[0].get("ps_key")
+            if not ps_key:
+                raise ValueError("ps_key não encontrado no inversor.")
+
+        # Define intervalo anual
+        start_time = f"{ano}01"
+        end_time = f"{ano}12"
+
+        body = {
+            "token": self.token_cache,
+            "appkey": self.appkey,
+            "data_point": "p1",
+            "start_time": start_time,
+            "end_time": end_time,
+            "query_type": "2",
+            "data_type": "4",
+            "order": "0",
+            "ps_key_list": [ps_key]
+        }
+
+        res = requests.post(
+            self.base_url + "getDevicePointsDayMonthYearDataList",
+            json=body,
+            headers=self.headers
+        )
+
+        res_json = res.json()
+        print(res_json)
+
+        if res.status_code != 200 or res_json.get("result_code") != "1":
+            raise Exception(f"Erro ao buscar geração anual: {res_json}")
+
+        result_data = res_json.get("result_data")
+        if not result_data or ps_key not in result_data:
+            raise ValueError(f"Nenhum dado de geração encontrado para o ps_key {ps_key}. Resposta: {res_json}")
+
+        dados = result_data[ps_key].get("p1", [])
+
+        resultado = []
+        soma_total = 0
+
+        for item in dados:
+            if "time_stamp" in item and "4" in item:
+                valor = round(float(item["4"]) / 1000, 2)
+                resultado.append({
+                    "month": f"{item['time_stamp'][:4]}-{item['time_stamp'][4:6]}",  # formato YYYY-MM
+                    "production": valor
+                })
+                soma_total += valor
+
+        return {
+            "anual": resultado,
+            "total": round(soma_total, 2)
+        }
