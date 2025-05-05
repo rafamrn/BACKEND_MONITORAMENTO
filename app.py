@@ -1,5 +1,4 @@
 from fastapi import FastAPI, Depends, HTTPException, status, Query
-from docx import Document
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
@@ -17,7 +16,6 @@ from clients.deye_client import ApiDeye
 from models.usina import UsinaModel
 from routers import projection
 from gerador_relatorio import preencher_modelo_docx
-import os
 import tempfile
 from services.performance_service import get_performance_diaria, get_performance_7dias, get_performance_30dias
 
@@ -42,24 +40,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.get("/gerar_relatorio/{plant_id}")
-def gerar_relatorio(plant_id: int, db: Session = Depends(get_db)):
-    todas = get_performance_30dias(isolarcloud, deye, db)
-    dados = next((item for item in todas if item.get("plant_id") == plant_id), None)
-
-    if not dados:
-        raise HTTPException(status_code=404, detail="Plant ID não encontrado")
-
-    modelo_path = "modelo.docx"
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".docx") as tmp:
-        preencher_modelo_docx(modelo_path, dados, tmp.name)
-        return FileResponse(
-            path=tmp.name,
-            filename=f"relatorio_usina_{plant_id}.docx",
-            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        )
 
 # Dependência: verificar usuário autenticado
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
