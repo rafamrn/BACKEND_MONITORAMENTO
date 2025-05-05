@@ -62,15 +62,15 @@ def listar_geracoes_diarias():
 
 @app.get("/performance_diaria")
 def performance_diaria(db: Session = Depends(get_db)):
-    return get_performance_diaria(isolarcloud, deye, db)
+    return get_performance_diaria(isolarcloud, huawei, deye, db)
 
 @app.get("/performance_7dias")
 def performance_7dias(db: Session = Depends(get_db)):
-    return get_performance_7dias(isolarcloud, deye, db)
+    return get_performance_7dias(isolarcloud, huawei, deye, db)
 
 @app.get("/performance_30dias")
 def performance_30dias(db: Session = Depends(get_db)):
-    return get_performance_30dias(isolarcloud, deye, db)
+    return get_performance_30dias(isolarcloud, huawei, deye, db)
 
 
 @app.post("/register")
