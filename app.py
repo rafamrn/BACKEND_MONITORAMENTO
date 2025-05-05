@@ -15,7 +15,6 @@ from clients.huawei_client import ApiHuawei
 from clients.deye_client import ApiDeye
 from models.usina import UsinaModel
 from routers import projection
-from gerador_relatorio import preencher_modelo_docx
 import tempfile
 from services.performance_service import get_performance_diaria, get_performance_7dias, get_performance_30dias
 
