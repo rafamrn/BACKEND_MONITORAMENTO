@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from pytz import timezone
 from typing import Optional
 from calendar import monthrange
+from models .codificacoes_sungrow import ponto_legivel
 
 
 class ApiSolarCloud:
@@ -634,7 +635,7 @@ class ApiSolarCloud:
         }
 
 
-    def get_dados_tecnicos(self, ps_key: str = None, plant_id: int = None):
+    def get_dados_tecnicos(self, ps_key: str = None, plant_id: int = 1432145):
 
         if not self.token_cache:
             self.login_solarcloud()
@@ -682,11 +683,11 @@ class ApiSolarCloud:
 
         res_json = res.json()
         dados = res_json["result_data"]["device_point_list"]
+        device_points = [item["device_point"] for item in dados]
 
-        device_points = [
-        {k: v for k, v in item["device_point"].items() if v is not None}
-        for item in dados
+        device_points_legiveis = [
+            {ponto_legivel.get(k, k): v for k, v in dp.items() if v is not None}
+            for dp in device_points
         ]
-
         return {
-            "dados": device_points}
+            "dados": device_points_legiveis}
