@@ -623,7 +623,7 @@ class ApiSolarCloud:
             if "time_stamp" in item and "4" in item:
                 valor = round(float(item["4"]) / 1000, 2)
                 resultado.append({
-                    "month": f"{item['time_stamp'][:4]}-{item['time_stamp'][4:6]}",  # formato YYYY-MM
+                    "date": f"{item['time_stamp'][:4]}-{item['time_stamp'][4:6]}",  # formato YYYY-MM
                     "production": valor
                 })
                 soma_total += valor
