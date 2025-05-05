@@ -19,4 +19,4 @@ def create_user(email: str, password: str):
     print("Usuário criado com sucesso.")
 
 # Substitua pelos dados desejados
-create_user("contato@rms7energia.com", "rms7@RMS")
+create_user("arthur@ferreira.com.br", "arthur123")
