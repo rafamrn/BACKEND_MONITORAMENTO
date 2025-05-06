@@ -10,7 +10,7 @@ class ApiHuawei:
     def __init__(self, username, password):
         self.username = username
         self.password = password
-        self.xsrf = "n-06875dukqofvo548ularfxg9ga7wqmmm5gs487ljs6tfur1h4bo4g6ml1cuk6k3t1emls57thg5gpg2k48ruapdi5gqkbyntbv09qn5giojzaqtfqnnwbt5fca1etfs5"
+        self.xsrf = None
         self.last_token_time = 0
         self.cached_data = None
         self.last_cache_time = 0
@@ -57,8 +57,6 @@ class ApiHuawei:
         if self.cached_data and (time.time() - self.last_cache_time < self.cache_expiry):
             return self.cached_data  # Reutiliza dados se ainda não expiraram
 
-        self.login_huawei()
-
         url_stations = self.base_url + "stations"
         url_kpi = self.base_url + "getStationRealKpi"
         url_dev = self.base_url + "getDevList"
@@ -78,7 +76,9 @@ class ApiHuawei:
                 continue
 
             resp_kpi = self._post_with_auth(url_kpi, {"stationCodes": station_code})
+
             resp_dev = self._post_with_auth(url_dev, {"stationCodes": station_code})
+
 
             # Valores padrão
             id_usina = "--"
@@ -129,6 +129,9 @@ class ApiHuawei:
 
         self.cached_data = dados_usinas
         self.last_cache_time = time.time()
+        if  dados_usinas:
+            print("Dados das usinas obtidos com sucesso!")
+
         return dados_usinas
     
     # OBTENDO GERAÇÃO
@@ -138,11 +141,8 @@ class ApiHuawei:
         brasil = timezone("America/Sao_Paulo")
         agora = datetime.now(brasil)
 
-        if hasattr(self, "_geracao_cache") and hasattr(self, "_geracao_cache_timestamp"):
-            if self._geracao_cache and self._geracao_cache_timestamp:
-                if (agora - self._geracao_cache_timestamp) < timedelta(minutes=10):
-                    print("🔁 Retornando geração do cache diário")
-                    return self._geracao_cache
+        if self.cached_data and (time.time() - self.last_cache_time < self.cache_expiry):
+            return self.cached_data  # Reutiliza dados se ainda não expiraram
 
         if not hasattr(self, "xsrf") or not self.xsrf:
             self.login_huawei()

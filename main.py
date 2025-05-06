@@ -6,9 +6,7 @@ from datetime import date
 
 def testar_huawei():
     api = ApiHuawei(settings.HUAWEI_USER, settings.HUAWEI_PASS)
-    token = api.login_huawei()
-    if token:
-        api.get_geracao()
+    api.get_usinas()
 
 
 def testar_sungrow():

@@ -55,7 +55,7 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
 # Rotas
 @app.get("/usina", response_model=List[UsinaModel])
 def listar_usinas(usuario_logado: User = Depends(get_current_user)):
-    usinas = deye.get_usinas() + isolarcloud.get_usinas()
+    usinas = deye.get_usinas() + isolarcloud.get_usinas() + huawei.get_usinas()
     return agrupar_usinas_por_nome(usinas)
 
 @app.get("/geracoes_diarias")
