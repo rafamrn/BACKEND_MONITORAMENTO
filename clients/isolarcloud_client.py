@@ -11,10 +11,10 @@ from models .codificacoes_sungrow import ponto_legivel
 
 class ApiSolarCloud:
     base_url = "https://gateway.isolarcloud.com.hk/openapi/"
-    appkey = "C79920B2B9D982D2603539BFE7066052"
+    appkey = "03A0E186C87230B4DE9E028F90491A58"
     headers = {
         "Content-Type": "application/json",
-        "x-access-key": "hd3cgs3yjgx8cv7z47t8hpsxkig14qxa",
+        "x-access-key": "4ey7zficrz2np518aqku2a8997ha1ebz",
         "sys_code": "901"
     }
 
