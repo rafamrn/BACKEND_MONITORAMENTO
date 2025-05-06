@@ -1,5 +1,5 @@
 class Settings:
-    HUAWEI_USER = "rms7energia"
+    HUAWEI_USER = "rms.energia"
     HUAWEI_PASS = "rms7@API"
     ISOLAR_USER = "contato@rms7energia.com"
     ISOLAR_PASS = "rms7@SUNGROW"

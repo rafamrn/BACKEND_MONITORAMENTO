@@ -10,7 +10,7 @@ class ApiHuawei:
     def __init__(self, username, password):
         self.username = username
         self.password = password
-        self.xsrf = None
+        self.xsrf = "n-06875dukqofvo548ularfxg9ga7wqmmm5gs487ljs6tfur1h4bo4g6ml1cuk6k3t1emls57thg5gpg2k48ruapdi5gqkbyntbv09qn5giojzaqtfqnnwbt5fca1etfs5"
         self.last_token_time = 0
         self.cached_data = None
         self.last_cache_time = 0

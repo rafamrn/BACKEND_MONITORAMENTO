@@ -8,10 +8,8 @@ def testar_huawei():
     api = ApiHuawei(settings.HUAWEI_USER, settings.HUAWEI_PASS)
     token = api.login_huawei()
     if token:
-        usinas = api.get_geracao()
-        print("Huawei usinas:", usinas)
-    else:
-        print("Falha ao autenticar Huawei")
+        api.get_geracao()
+
 
 def testar_sungrow():
     api = ApiSolarCloud(settings.ISOLAR_USER, settings.ISOLAR_PASS)
@@ -31,6 +29,6 @@ def testar_deye():
 
 if __name__ == "__main__":
     # Altere aqui para escolher qual testar
-    testar_sungrow()
-    # testar_huawei()
+    # testar_sungrow()
+    testar_huawei()
     # testar_deye()
