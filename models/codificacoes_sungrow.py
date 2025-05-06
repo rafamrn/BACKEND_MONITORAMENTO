@@ -13,6 +13,20 @@ ponto_legivel = {
     "p7401": "tensao_mppt_11",
     "p7402": "tensao_mppt_12",
 
+    #MPPT Currents
+    "p6": "corrente_mppt_1",
+    "p8": "corrente_mppt_2",
+    "p10": "corrente_mppt_3",
+    "p46": "corrente_mppt_4",
+    "p48": "corrente_mppt_5",
+    "p50": "corrente_mppt_6",
+    "p52": "corrente_mppt_7",
+    "p54": "corrente_mppt_8",
+    "p56": "corrente_mppt_9",
+    "p58": "corrente_mppt_10",
+    "p7451": "corrente_mppt_11",
+    "p7452": "corrente_mppt_12",
+
     # Tensões de Fase
     "p18": "tensao_fase_a",
     "p19": "tensao_fase_b",
