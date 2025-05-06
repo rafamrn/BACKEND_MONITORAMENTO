@@ -1,14 +1,36 @@
 ponto_legivel = {
-    "p4": "temperatura_interna",              # 4 - Internal Air Temperature (℃)
-    "p18": "tensao_fase_a",                   # 18 - Phase A Voltage (V)
-    "p19": "tensao_fase_b",                   # 19 - Phase B Voltage (V)
-    "p20": "tensao_fase_c",                   # 20 - Phase C Voltage (V)
-    "p21": "corrente_fase_a",                 # 21 - Phase A Current (A)
-    "p22": "corrente_fase_b",                 # 22 - Phase B Current (A)
-    "p23": "corrente_fase_c",                 # 23 - Phase C Current (A)
-    "p27": "frequencia",                      # 27 - Grid Frequency (Hz)
+    # MPPT Voltages
+    "p5": "tensao_mppt_1",
+    "p7": "tensao_mppt_2",
+    "p9": "tensao_mppt_3",
+    "p45": "tensao_mppt_4",
+    "p47": "tensao_mppt_5",
+    "p49": "tensao_mppt_6",
+    "p51": "tensao_mppt_7",
+    "p53": "tensao_mppt_8",
+    "p55": "tensao_mppt_9",
+    "p57": "tensao_mppt_10",
+    "p7401": "tensao_mppt_11",
+    "p7402": "tensao_mppt_12",
 
-    "p96": "tensao_string_1",                 # 96 - String 1 Voltage (V)
+    # Tensões de Fase
+    "p18": "tensao_fase_a",
+    "p19": "tensao_fase_b",
+    "p20": "tensao_fase_c",
+
+    # Correntes de Fase
+    "p21": "corrente_fase_a",
+    "p22": "corrente_fase_b",
+    "p23": "corrente_fase_c",
+
+    # Frequência
+    "p27": "frequencia_rede",
+
+    # Temperatura Interna
+    "p4": "temperatura_interna",
+
+    # String Voltages
+    "p96": "tensao_string_1",
     "p97": "tensao_string_2",
     "p98": "tensao_string_3",
     "p99": "tensao_string_4",
@@ -33,7 +55,8 @@ ponto_legivel = {
     "p7170": "tensao_string_23",
     "p7171": "tensao_string_24",
 
-    "p70": "corrente_string_1",              # 70 - String 1 Current (A)
+    # String Currents
+    "p70": "corrente_string_1",
     "p71": "corrente_string_2",
     "p72": "corrente_string_3",
     "p73": "corrente_string_4",
