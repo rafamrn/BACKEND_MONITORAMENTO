@@ -114,7 +114,7 @@ class ApiHuawei:
                 print(f"[Huawei] Erro ao processar usina {station_code}: {e}")
 
             dados_usinas.append({
-                "ps_id": station_code.replace("NE=", ""),
+                "ps_id": station_code,
                 "id_usina": id_usina,
                 "curr_power": curr_power/1000,
                 "ps_name": usina.get("plantName", "sem nome"),
