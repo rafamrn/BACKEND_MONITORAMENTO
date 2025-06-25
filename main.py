@@ -11,7 +11,7 @@ def testar_huawei():
 
 def testar_sungrow():
     api = ApiSolarCloud(settings.ISOLAR_USER, settings.ISOLAR_PASS)
-    dados = api.get_dados_tecnicos()
+    dados = api.get_usinas()
     print(dados)
 
 def testar_deye():
@@ -27,6 +27,6 @@ def testar_deye():
 
 if __name__ == "__main__":
     # Altere aqui para escolher qual testar
-    # testar_sungrow()
-    testar_huawei()
+    testar_sungrow()
+    # testar_huawei()
     # testar_deye()

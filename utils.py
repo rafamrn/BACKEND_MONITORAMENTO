@@ -38,7 +38,19 @@ def agrupar_usinas_por_nome(usinas: List[dict]) -> List[dict]:
     resultado = []
     for grupo in agrupadas.values():
         if len(grupo) == 1:
-            resultado.append(grupo[0])
+            u = grupo[0]
+            resultado.append({
+                "ps_id": u["ps_id"],
+                "ps_name": u["ps_name"],
+                "location": u["location"],
+                "capacidade": float(u["capacidade"]),
+                "curr_power": float(u["curr_power"]),
+                "total_energy": float(u["total_energy"]),
+                "today_energy": float(u["today_energy"]),
+                "co2_total": float(u["co2_total"]),
+                "income_total": float(u["income_total"]),
+                "ps_fault_status": int(u["ps_fault_status"]),
+            })
         else:
             primeira = grupo[0]
             usina_unificada = {

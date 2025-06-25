@@ -120,9 +120,8 @@ class ApiSolarCloud:
                  "income_total": usina.get("total_income", {}).get("value"),
                  "ps_fault_status": ps_fault_status
     })
+                print(dados_usinas)
 
-
-                
         except KeyError as e:
             print("Erro ao acessar dados da resposta:", e)
             return []
