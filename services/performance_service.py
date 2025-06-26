@@ -115,7 +115,7 @@ def get_performance_diaria(isolarcloud, deye, db: Session):
 
     agora = datetime.now()
     if _performance_diaria_cache and _performance_diaria_cache_timestamp:
-        if (agora - _performance_diaria_cache_timestamp) < timedelta(minutes=10):
+        if (agora - _performance_diaria_cache_timestamp) < timedelta(minutes=5):
             print("🔁 Retornando performance diária do cache")
             return _performance_diaria_cache
 

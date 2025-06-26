@@ -230,7 +230,7 @@ class ApiSolarCloud:
                         "data_point": "p1",
                         "end_time": self.ontem,
                         "query_type": "1",
-                        "start_time": self.anteontem,
+                        "start_time": self.ontem,
                         "ps_key_list": [ps_key],
                         "data_type": "2",
                         "order": "0"
