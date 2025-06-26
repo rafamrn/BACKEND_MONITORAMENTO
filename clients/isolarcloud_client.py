@@ -452,10 +452,13 @@ class ApiSolarCloud:
             for horario, valor in sorted(dados_por_hora.items())
         ]
 
-        p1_calculado = round(sum(item["production"] for item in resultado), 2)
+        p1_final = max(geracoes_p1) if geracoes_p1 else 0.0
+        p1_final_kwh = p1_final / 1000
+        p1_final_kwh = p1_final / 1000  # converte de Wh para kWh
+
 
         return {
-            "p1": p1_calculado,
+            "p1": round(p1_final_kwh, 2),
             "diario": resultado
         }
 
