@@ -396,7 +396,7 @@ class ApiSolarCloud:
         print(f"✅ ps_keys encontrados: {ps_keys}")
 
         dados_por_hora = defaultdict(float)
-        geracoes_p1 = []
+        p1_por_inversor = defaultdict(list)
 
         for key in ps_keys:
             for bloco in range(0, 24, 3):
@@ -443,7 +443,8 @@ class ApiSolarCloud:
 
                     if energia_total:
                         try:
-                            geracoes_p1.append(float(energia_total))
+                            p1_float = float(energia_total)
+                            p1_por_inversor[key].append(p1_float)
                         except ValueError:
                             print(f"⚠️ Valor inválido de p1: {energia_total}")
 
@@ -452,13 +453,12 @@ class ApiSolarCloud:
             for horario, valor in sorted(dados_por_hora.items())
         ]
 
-        p1_final = max(geracoes_p1) if geracoes_p1 else 0.0
-        p1_final_kwh = p1_final / 1000
-        p1_final_kwh = p1_final / 1000  # converte de Wh para kWh
+        p1_total_wh = sum(max(valores) for valores in p1_por_inversor.values() if valores)
+        p1_total_kwh = p1_total_wh / 1000
 
 
         return {
-            "p1": round(p1_final_kwh, 2),
+            "p1": round(p1_total_kwh, 2),
             "diario": resultado
         }
 
