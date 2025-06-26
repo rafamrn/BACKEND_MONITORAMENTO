@@ -411,7 +411,7 @@ class ApiSolarCloud:
                     "start_time_stamp": start_str,
                     "end_time_stamp": end_str,
                     "minute_interval": 5,
-                    "points": "p24,p1",  # ✅ inclui p1
+                    "points": "p24,p2",  # ✅ inclui p2
                     "ps_key_list": [key],
                     "is_get_data_acquisition_time": "1"
                 }
@@ -431,7 +431,7 @@ class ApiSolarCloud:
                 for item in res_json["result_data"].get(key, []):
                     timestamp = item.get("time_stamp")
                     potencia = item.get("p24", "0")
-                    energia_total = item.get("p1")  # ✅ captura p1
+                    energia_total = item.get("p2")  # ✅ captura p2
 
                     if timestamp:
                         horario = timestamp[8:10] + ":" + timestamp[10:12]
@@ -452,7 +452,7 @@ class ApiSolarCloud:
         ]
 
         return {
-            "p1": round(max(geracoes_p1) / 1000, 2) if geracoes_p1 else None,
+            "p2": round(max(geracoes_p1) / 1000, 2) if geracoes_p1 else None,
             "diario": resultado
         }
 
