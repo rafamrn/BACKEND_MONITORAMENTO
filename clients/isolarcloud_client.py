@@ -451,8 +451,10 @@ class ApiSolarCloud:
             for horario, valor in sorted(dados_por_hora.items())
         ]
 
+        p1_calculado = round(sum(item["production"] for item in resultado), 2)
+
         return {
-            "p1": round(max(geracoes_p1) / 1000, 2) if geracoes_p1 else None,
+            "p1": p1_calculado,
             "diario": resultado
         }
 
