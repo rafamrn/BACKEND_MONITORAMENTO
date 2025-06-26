@@ -411,7 +411,7 @@ class ApiSolarCloud:
                     "start_time_stamp": start_str,
                     "end_time_stamp": end_str,
                     "minute_interval": 5,
-                    "points": "p24,p2",  # ✅ inclui p2
+                    "points": "p24,p2",  # ✅ inclui p1
                     "ps_key_list": [key],
                     "is_get_data_acquisition_time": "1"
                 }
