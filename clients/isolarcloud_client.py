@@ -74,7 +74,10 @@ class ApiSolarCloud:
         return response
 
     def get_usinas(self):
-        if self.usinas_cache:
+        import time  # garante que time está disponível
+
+        # Expira cache após 10 minutos (300 segundos)
+        if self.usinas_cache and (time.time() - getattr(self, "usinas_timestamp", 0)) < 300:
             return self.usinas_cache
 
         url = self.base_url + "getPowerStationList"
@@ -95,37 +98,35 @@ class ApiSolarCloud:
 
         try:
             for usina in dados["result_data"]["pageList"]:
-                # Sempre pegue o ps_fault_status aqui, fora de qualquer try
                 ps_fault_status = usina.get("ps_fault_status", None)
 
-                # Trata o valor de potência
                 curr_power_raw = usina.get("curr_power", {}).get("value", "0")
-                today_energy_raw = usina.get("today_energy", {}).get("value","0")
+                today_energy_raw = usina.get("today_energy", {}).get("value", "0")
+
                 try:
-                    curr_power_str = str(curr_power_raw).replace(".", "")  # Remove pontos separadores
+                    curr_power_str = str(curr_power_raw).replace(".", "")
                     curr_power_float = float(curr_power_str)
-                    curr_power_kw = curr_power_float  # Tudo convertido de W para kW
                 except (ValueError, TypeError):
-                    curr_power_kw = 0
+                    curr_power_float = 0
 
                 dados_usinas.append({
                     "ps_id": usina.get("ps_id"),
-                    "curr_power": curr_power_kw,
                     "ps_name": usina.get("ps_name"),
                     "location": usina.get("ps_location"),
                     "capacidade": usina.get("total_capcity", {}).get("value", "0"),
-                 "total_energy": usina.get("total_energy", {}).get("value", "0"),
-                 "today_energy": parse_float(today_energy_raw),
-                 "co2_total": usina.get("co2_reduce_total", {}).get("value"),
-                 "income_total": usina.get("total_income", {}).get("value"),
-                 "ps_fault_status": ps_fault_status
-    })
-                print(dados_usinas)
+                    "curr_power": curr_power_float,
+                    "total_energy": usina.get("total_energy", {}).get("value", "0"),
+                    "today_energy": parse_float(today_energy_raw),
+                    "co2_total": usina.get("co2_reduce_total", {}).get("value"),
+                    "income_total": usina.get("total_income", {}).get("value"),
+                    "ps_fault_status": ps_fault_status
+                })
 
         except KeyError as e:
             print("Erro ao acessar dados da resposta:", e)
             return []
 
+        # Salva no cache com timestamp
         self.usinas_cache = dados_usinas
         self.usinas_timestamp = time.time()
 
