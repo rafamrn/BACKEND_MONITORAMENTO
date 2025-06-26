@@ -464,86 +464,74 @@ class ApiSolarCloud:
 
 
     def get_geracao_mes(self, data: str, ps_key: str = None, plant_id: int = None):
-        """
-        Consulta a geração diária (p1) de cada dia do mês especificado (formato YYYY-MM) para a usina informada,
-        retornando também a soma total do mês.
-        """
-
         if not self.token_cache or time.time() - self.token_timestamp > 600:
             self.login_solarcloud()
 
-        if not ps_key:
-            if not self.usinas_cache:
-                self.get_usinas()
+        if not self.usinas_cache:
+            self.get_usinas()
 
-            url = self.base_url + "getDeviceList"
-            body = {
-                "appkey": self.appkey,
-                "token": self.token_cache,
-                "curPage": 1,
-                "size": 10,
-                "ps_id": str(plant_id),
-                "device_type_list": [1],
-                "lang": "_pt_BR"
-            }
+        url = self.base_url + "getDeviceList"
+        body = {
+            "appkey": self.appkey,
+            "token": self.token_cache,
+            "curPage": 1,
+            "size": 100,
+            "ps_id": str(plant_id),
+            "device_type_list": [1],
+            "lang": "_pt_BR"
+        }
 
-            res = self._post_with_auth(url, body)
-            data_device = res.json()
-            inversores = data_device.get("result_data", {}).get("pageList", [])
+        res = self._post_with_auth(url, body)
+        data_device = res.json()
+        inversores = data_device.get("result_data", {}).get("pageList", [])
+        ps_keys = [inv.get("ps_key") for inv in inversores if inv.get("ps_key")]
 
-            if not inversores:
-                raise ValueError("Nenhum inversor encontrado para essa usina.")
+        if not ps_keys:
+            raise ValueError("Nenhum ps_key encontrado.")
 
-            ps_key = inversores[0].get("ps_key")
-            if not ps_key:
-                raise ValueError("ps_key não encontrado no inversor.")
-
-        # Datas no formato esperado
         ano, mes = data.split("-")
         _, ultimo_dia = monthrange(int(ano), int(mes))
         start_time = f"{ano}{mes}01"
         end_time = f"{ano}{mes}{str(ultimo_dia).zfill(2)}"
 
-        body = {
-            "token": self.token_cache,
-            "appkey": self.appkey,
-            "data_point": "p1",
-            "start_time": start_time,
-            "end_time": end_time,
-            "query_type": "1",
-            "data_type": "2",
-            "order": "0",
-            "ps_key_list": [ps_key]
-        }
-
-        res = requests.post(
-            self.base_url + "getDevicePointsDayMonthYearDataList",
-            json=body,
-            headers=self.headers
-        )
-
-        res_json = res.json()
-
-        if res.status_code != 200 or res_json.get("result_code") != "1":
-            raise Exception(f"Erro ao buscar geração mensal: {res_json}")
-
-        result_data = res_json.get("result_data")
-        if not result_data or ps_key not in result_data:
-            raise ValueError(f"Nenhum dado de geração encontrado para o ps_key {ps_key}. Resposta: {res_json}")
-
-        dados = result_data[ps_key].get("p1", [])
-
-        resultado = []
+        dados_acumulados = {}
         soma_total = 0
 
-        for item in dados:
-            if "time_stamp" in item and "2" in item:
-                valor = round(float(item["2"]) / 1000, 2)
-                resultado.append({
-                    "date": f"{item['time_stamp'][:4]}-{item['time_stamp'][4:6]}-{item['time_stamp'][6:8]}",
-                    "production": valor
-                })
-                soma_total += valor
+        for key in ps_keys:
+            body = {
+                "token": self.token_cache,
+                "appkey": self.appkey,
+                "data_point": "p1",
+                "start_time": start_time,
+                "end_time": end_time,
+                "query_type": "1",
+                "data_type": "2",
+                "order": "0",
+                "ps_key_list": [key]
+            }
+
+            res = requests.post(
+                self.base_url + "getDevicePointsDayMonthYearDataList",
+                json=body,
+                headers=self.headers
+            )
+
+            res_json = res.json()
+            if res.status_code != 200 or res_json.get("result_code") != "1":
+                print(f"⚠️ Erro para ps_key {key}: {res_json}")
+                continue
+
+            dados = res_json.get("result_data", {}).get(key, {}).get("p1", [])
+            for item in dados:
+                timestamp = item.get("time_stamp")
+                valor_raw = item.get("2")
+                if timestamp and valor_raw:
+                    data_str = f"{timestamp[:4]}-{timestamp[4:6]}-{timestamp[6:8]}"
+                    valor = round(float(valor_raw) / 1000, 2)
+                    dados_acumulados[data_str] = dados_acumulados.get(data_str, 0) + valor
+
+        resultado = [{"date": k, "production": round(v, 2)} for k, v in sorted(dados_acumulados.items())]
+        soma_total = sum([item["production"] for item in resultado])
 
         return {
             "mensal": resultado,
@@ -551,88 +539,72 @@ class ApiSolarCloud:
         }
     
     def get_geracao_ano(self, ano: str, ps_key: str = None, plant_id: int = None):
-        """
-        Consulta a geração mensal (p1) de cada mês do ano especificado (formato YYYY) para a usina informada,
-        retornando também a soma total do ano.
-        """
-        import requests
-        import time
-        from calendar import monthrange
-
-        if not self.token_cache or time.time():
+        if not self.token_cache or time.time() - self.token_timestamp > 600:
             self.login_solarcloud()
 
-        if not ps_key:
-            if not self.usinas_cache:
-                self.get_usinas()
+        if not self.usinas_cache:
+            self.get_usinas()
 
-            url = self.base_url + "getDeviceList"
-            body = {
-                "appkey": self.appkey,
-                "token": self.token_cache,
-                "curPage": 1,
-                "size": 10,
-                "ps_id": str(plant_id),
-                "device_type_list": [1],
-                "lang": "_pt_BR"
-            }
+        url = self.base_url + "getDeviceList"
+        body = {
+            "appkey": self.appkey,
+            "token": self.token_cache,
+            "curPage": 1,
+            "size": 100,
+            "ps_id": str(plant_id),
+            "device_type_list": [1],
+            "lang": "_pt_BR"
+        }
 
-            res = self._post_with_auth(url, body)
-            data_device = res.json()
-            inversores = data_device.get("result_data", {}).get("pageList", [])
+        res = self._post_with_auth(url, body)
+        data_device = res.json()
+        inversores = data_device.get("result_data", {}).get("pageList", [])
+        ps_keys = [inv.get("ps_key") for inv in inversores if inv.get("ps_key")]
 
-            if not inversores:
-                raise ValueError("Nenhum inversor encontrado para essa usina.")
+        if not ps_keys:
+            raise ValueError("Nenhum ps_key encontrado.")
 
-            ps_key = inversores[0].get("ps_key")
-            if not ps_key:
-                raise ValueError("ps_key não encontrado no inversor.")
-
-        # Define intervalo anual
         start_time = f"{ano}01"
         end_time = f"{ano}12"
 
-        body = {
-            "token": self.token_cache,
-            "appkey": self.appkey,
-            "data_point": "p1",
-            "start_time": start_time,
-            "end_time": end_time,
-            "query_type": "2",
-            "data_type": "4",
-            "order": "0",
-            "ps_key_list": [ps_key]
-        }
-
-        res = requests.post(
-            self.base_url + "getDevicePointsDayMonthYearDataList",
-            json=body,
-            headers=self.headers
-        )
-
-        res_json = res.json()
-        print(res_json)
-
-        if res.status_code != 200 or res_json.get("result_code") != "1":
-            raise Exception(f"Erro ao buscar geração anual: {res_json}")
-
-        result_data = res_json.get("result_data")
-        if not result_data or ps_key not in result_data:
-            raise ValueError(f"Nenhum dado de geração encontrado para o ps_key {ps_key}. Resposta: {res_json}")
-
-        dados = result_data[ps_key].get("p1", [])
-
-        resultado = []
+        dados_acumulados = {}
         soma_total = 0
 
-        for item in dados:
-            if "time_stamp" in item and "4" in item:
-                valor = round(float(item["4"]) / 1000, 2)
-                resultado.append({
-                    "date": f"{item['time_stamp'][:4]}-{item['time_stamp'][4:6]}",  # formato YYYY-MM
-                    "production": valor
-                })
-                soma_total += valor
+        for key in ps_keys:
+            body = {
+                "token": self.token_cache,
+                "appkey": self.appkey,
+                "data_point": "p1",
+                "start_time": start_time,
+                "end_time": end_time,
+                "query_type": "2",
+                "data_type": "4",
+                "order": "0",
+                "ps_key_list": [key]
+            }
+
+            res = requests.post(
+                self.base_url + "getDevicePointsDayMonthYearDataList",
+                json=body,
+                headers=self.headers
+            )
+
+            res_json = res.json()
+            if res.status_code != 200 or res_json.get("result_code") != "1":
+                print(f"⚠️ Erro para ps_key {key}: {res_json}")
+                continue
+
+            dados = res_json.get("result_data", {}).get(key, {}).get("p1", [])
+            for item in dados:
+                timestamp = item.get("time_stamp")
+                valor_raw = item.get("4")
+                if timestamp and valor_raw:
+                    data_str = f"{timestamp[:4]}-{timestamp[4:6]}"  # YYYY-MM
+                    valor = round(float(valor_raw) / 1000, 2)
+                    dados_acumulados[data_str] = dados_acumulados.get(data_str, 0) + valor
+
+        resultado = [{"date": k, "production": round(v, 2)} for k, v in sorted(dados_acumulados.items())]
+        soma_total = sum([item["production"] for item in resultado])
 
         return {
             "anual": resultado,
