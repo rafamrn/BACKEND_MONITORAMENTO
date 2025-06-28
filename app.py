@@ -45,6 +45,7 @@ def get_db():
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
+        "http://localhost:8080",
         "https://frontendmonitoramento-production.up.railway.app"
     ],
     allow_credentials=True,
