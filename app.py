@@ -46,7 +46,6 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:8080",
-        "http://localhost:5173",
         "https://frontendmonitoramento-production.up.railway.app"
     ],
     allow_credentials=True,
@@ -165,7 +164,6 @@ def obter_geracao_anual(
     
 @app.post("/users")
 def create_user_route(user: UserCreate, db: Session = Depends(get_db)):
-    print("➡️ Recebendo requisição para criar usuário:", user.email)
     user_exists = db.query(User).filter(User.email == user.email).first()
     if user_exists:
         raise HTTPException(status_code=400, detail="Usuário já existe.")
