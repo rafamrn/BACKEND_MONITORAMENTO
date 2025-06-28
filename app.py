@@ -17,7 +17,6 @@ from clients.deye_client import ApiDeye
 from models.usina import UsinaModel
 from routers import projection
 from pydantic import BaseModel, EmailStr
-from app import get_current_user
 import tempfile
 from services.performance_service import get_performance_diaria, get_performance_7dias, get_performance_30dias
 
