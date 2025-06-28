@@ -29,7 +29,6 @@ deye = ApiDeye(settings.DEYE_USER, settings.DEYE_PASS, settings.DEYE_APPID, sett
 
 # App FastAPI
 app = FastAPI()
-app.add_middleware(HTTPSRedirectMiddleware)
 app.add_middleware(
     TrustedHostMiddleware,
     allowed_hosts=["*"]
