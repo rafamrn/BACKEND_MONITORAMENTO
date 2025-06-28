@@ -197,6 +197,8 @@ def criar_integracao(integracao: IntegracaoCreate, db: Session = Depends(get_db)
 def listar_integracoes(db: Session = Depends(get_db), usuario: User = Depends(get_current_user)):
     return db.query(Integracao).filter(Integracao.cliente_id == usuario.id).all()
 
+app.include_router(router)
+
 @app.get("/admin/integracoes", response_model=List[IntegracaoOut])
 def listar_todas_integracoes(db: Session = Depends(get_db), usuario_logado: User = Depends(get_current_user)):
     if not usuario_logado.is_admin:
