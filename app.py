@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, status, Query, APIRouter
 from fastapi.responses import FileResponse
-from fastapi.middleware.cors import CORSMiddleware, HTTPSRedirectMiddleware
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from typing import List, Optional
