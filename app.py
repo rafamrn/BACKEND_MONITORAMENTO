@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException, status, Query, APIRouter
 from fastapi.responses import FileResponse
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.cors import CORSMiddleware, HTTPSRedirectMiddleware
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -17,6 +17,7 @@ from clients.deye_client import ApiDeye
 from models.usina import UsinaModel
 from routers import projection
 from pydantic import BaseModel, EmailStr
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 import tempfile
 from services.performance_service import get_performance_diaria, get_performance_7dias, get_performance_30dias
 
@@ -27,6 +28,11 @@ deye = ApiDeye(settings.DEYE_USER, settings.DEYE_PASS, settings.DEYE_APPID, sett
 
 # App FastAPI
 app = FastAPI()
+app.add_middleware(HTTPSRedirectMiddleware)
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=["*"]
+)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
 app.include_router(projection.router)
 
