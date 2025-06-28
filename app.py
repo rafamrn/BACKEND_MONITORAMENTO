@@ -5,6 +5,7 @@ from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from config.settings import settings
+from database import SessionLocal
 from database import get_db
 from modelos import User
 from esquemas import UserCreate
@@ -15,6 +16,7 @@ from clients.huawei_client import ApiHuawei
 from clients.deye_client import ApiDeye
 from models.usina import UsinaModel
 from routers import projection
+from pydantic import BaseModel, EmailStr
 import tempfile
 from services.performance_service import get_performance_diaria, get_performance_7dias, get_performance_30dias
 
@@ -27,6 +29,17 @@ deye = ApiDeye(settings.DEYE_USER, settings.DEYE_PASS, settings.DEYE_APPID, sett
 app = FastAPI()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
 app.include_router(projection.router)
+
+class UserCreate(BaseModel):
+    email: EmailStr
+    password: str
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 # CORS
 app.add_middleware(
@@ -148,3 +161,18 @@ def obter_geracao_anual(
         return isolarcloud.get_geracao_ano(ano=year, plant_id=plant_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+@app.post("/users")
+def create_user_route(user: UserCreate, db: Session = Depends(get_db)):
+    user_exists = db.query(User).filter(User.email == user.email).first()
+    if user_exists:
+        raise HTTPException(status_code=400, detail="Usuário já existe.")
+
+    db_user = User(
+        email=user.email,
+        hashed_password=hash_password(user.password)
+    )
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return {"message": "Usuário criado com sucesso", "user_id": db_user.id}

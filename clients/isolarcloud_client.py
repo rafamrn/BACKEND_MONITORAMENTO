@@ -490,7 +490,12 @@ class ApiSolarCloud:
             raise ValueError("Nenhum ps_key encontrado.")
 
         ano, mes = data.split("-")
-        _, ultimo_dia = monthrange(int(ano), int(mes))
+        hoje = datetime.now()
+        if int(ano) == hoje.year and int(mes) == hoje.month:
+            ultimo_dia = hoje.day  # usa o dia atual
+        else:
+            _, ultimo_dia = monthrange(int(ano), int(mes))
+
         start_time = f"{ano}{mes}01"
         end_time = f"{ano}{mes}{str(ultimo_dia).zfill(2)}"
 
