@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status, Query
+from fastapi import FastAPI, Depends, HTTPException, status, Query, APIRouter
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
@@ -7,8 +7,8 @@ from typing import List, Optional
 from config.settings import settings
 from database import SessionLocal
 from database import get_db
-from modelos import User
-from esquemas import UserCreate
+from modelos import User, Integracao
+from esquemas import UserCreate, IntegracaoCreate, IntegracaoOut
 from utils import agrupar_usinas_por_nome, hash_password, verify_password
 from auth import create_access_token, decode_access_token
 from clients.isolarcloud_client import ApiSolarCloud
@@ -17,6 +17,7 @@ from clients.deye_client import ApiDeye
 from models.usina import UsinaModel
 from routers import projection
 from pydantic import BaseModel, EmailStr
+from app import get_current_user
 import tempfile
 from services.performance_service import get_performance_diaria, get_performance_7dias, get_performance_30dias
 
@@ -177,3 +178,29 @@ def create_user_route(user: UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_user)
     return {"message": "Usuário criado com sucesso", "user_id": db_user.id}
+
+router = APIRouter(prefix="/integracoes", tags=["Integrações"])
+
+@router.post("/", response_model=IntegracaoOut)
+def criar_integracao(integracao: IntegracaoCreate, db: Session = Depends(get_db), usuario: User = Depends(get_current_user)):
+    nova = Integracao(
+        cliente_id=usuario.id,
+        plataforma=integracao.plataforma,
+        usuario=integracao.usuario,
+        senha=integracao.senha
+    )
+    db.add(nova)
+    db.commit()
+    db.refresh(nova)
+    return nova
+
+@router.get("/", response_model=list[IntegracaoOut])
+def listar_integracoes(db: Session = Depends(get_db), usuario: User = Depends(get_current_user)):
+    return db.query(Integracao).filter(Integracao.cliente_id == usuario.id).all()
+
+@app.get("/admin/integracoes", response_model=List[IntegracaoOut])
+def listar_todas_integracoes(db: Session = Depends(get_db), usuario_logado: User = Depends(get_current_user)):
+    if not usuario_logado.is_admin:
+        raise HTTPException(status_code=403, detail="Acesso restrito a administradores.")
+    
+    return db.query(Integracao).all()
