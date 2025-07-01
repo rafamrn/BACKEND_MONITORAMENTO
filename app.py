@@ -20,6 +20,7 @@ from routers import projection
 from pydantic import BaseModel, EmailStr
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 import tempfile
+import os
 from services.performance_service import get_performance_diaria, get_performance_7dias, get_performance_30dias
 
 # Instanciando clientes das APIs externas
@@ -40,7 +41,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 app.add_middleware(
     TrustedHostMiddleware,
