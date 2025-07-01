@@ -17,24 +17,17 @@ class User(Base):
     payment_status = Column(String, default="up-to-date")
     last_payment = Column(Date, default=datetime.date.today)
     created_at = Column(Date, default=datetime.date.today)
-
+    
+    is_admin = Column(Boolean, default=False)  # <--- incluído aqui
     integracoes = relationship("Integracao", back_populates="cliente")
-
-class Usuario(Base):
-    __tablename__ = "usuarios"
-    id = Column(Integer, primary_key=True, index=True)
-    email = Column(String, unique=True, index=True)
-    senha = Column(String)
-    nome = Column(String)
-    is_admin = Column(Boolean, default=False)  # <--- este campo
 
 class Integracao(Base):
     __tablename__ = "integracoes"
 
     id = Column(Integer, primary_key=True, index=True)
     cliente_id = Column(Integer, ForeignKey("users.id"))
-    plataforma = Column(String, nullable=False)  # Ex: "Huawei", "Sungrow", "Deye"
-    usuario = Column(String, nullable=False)
+    plataforma = Column(String, nullable=False)
+    username = Column(String, nullable=False)
     senha = Column(String, nullable=False)
     x_access_key = Column(String, nullable=True)
     appkey = Column(String, nullable=True)
