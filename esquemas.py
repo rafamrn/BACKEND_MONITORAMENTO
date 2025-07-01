@@ -48,8 +48,3 @@ class ClienteOut(BaseModel):
     class Config:
         from_attributes = True
         validate_by_name = True
-
-class IntegracaoCreate(BaseModel):
-    plataforma: str
-    usuario: str
-    senha: str

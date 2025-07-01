@@ -197,7 +197,7 @@ def criar_integracao(
     nova = Integracao(
         cliente_id=user.get("id") if user else None,  # opcional
         plataforma=integracao.plataforma,
-        usuario=integracao.usuario,
+        username=integracao.usuario,
         senha=integracao.senha
     )
     db.add(nova)
