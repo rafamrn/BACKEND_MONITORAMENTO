@@ -198,13 +198,15 @@ router = APIRouter(prefix="/integracoes", tags=["Integrações"])
 def criar_integracao(
     integracao: IntegracaoCreate,
     db: Session = Depends(get_db),
-    user: dict = Depends(get_current_user)  # opcional, se usa autenticação
+    user: User = Depends(get_current_user)
 ):
+    print("🔧 Dados recebidos:", integracao)
+
     nova = Integracao(
-        cliente_id=user.get("id") if user else None,  # opcional
+        cliente_id=user.id,
         plataforma=integracao.plataforma,
-        username=integracao.usuario,
-        senha=integracao.senha
+        username=integracao.username,
+        senha=integracao.senha,
     )
     db.add(nova)
     db.commit()
