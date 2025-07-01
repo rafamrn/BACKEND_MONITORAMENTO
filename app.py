@@ -23,14 +23,9 @@ import tempfile
 import os
 from services.performance_service import get_performance_diaria, get_performance_7dias, get_performance_30dias
 
-# Instanciando clientes das APIs externas
-isolarcloud = ApiSolarCloud(settings.ISOLAR_USER, settings.ISOLAR_PASS)
-huawei = ApiHuawei(settings.HUAWEI_USER, settings.HUAWEI_PASS)
-deye = ApiDeye(settings.DEYE_USER, settings.DEYE_PASS, settings.DEYE_APPID, settings.DEYE_APPSECRET)
-
-# App FastAPI
 app = FastAPI()
-# CORS
+
+# ✅ CORS no topo, antes de tudo
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -41,6 +36,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ✅ HTTPS redirect (apenas em produção)
+import os
+if os.getenv("ENV") == "production":
+    app.add_middleware(HTTPSRedirectMiddleware)
+
+# Instanciando clientes das APIs externas
+isolarcloud = ApiSolarCloud(settings.ISOLAR_USER, settings.ISOLAR_PASS)
+huawei = ApiHuawei(settings.HUAWEI_USER, settings.HUAWEI_PASS)
+deye = ApiDeye(settings.DEYE_USER, settings.DEYE_PASS, settings.DEYE_APPID, settings.DEYE_APPSECRET)
+
 
 app.add_middleware(
     TrustedHostMiddleware,
