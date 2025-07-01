@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field
-from datetime import date
+from datetime import datetime
 from typing import Optional
 
 # Usuário para registro/login
@@ -14,13 +14,19 @@ class IntegracaoCreate(BaseModel):
     senha: str
 
 
-class IntegracaoOut(IntegracaoCreate):
+class IntegracaoOut(BaseModel):
     id: int
-    x_access_key: Optional[str] = None
+    cliente_id: int
+    plataforma: str
+    username: str
+    senha: str
+    status: str = "active"
+    ultima_sincronizacao: Optional[datetime] = None
     appkey: Optional[str] = None
+    x_access_key: Optional[str] = None
 
     class Config:
-        from_attributes = True  # para FastAPI funcionar com ORM
+        orm_mode = True
 
 # Cadastro de clientes (herda de UserCreate se preferir)
 class ClienteCreate(BaseModel):
