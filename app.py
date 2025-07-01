@@ -216,12 +216,25 @@ def listar_todas_integracoes(db: Session = Depends(get_db), usuario_logado: User
 
 @app.post("/clientes", response_model=ClienteOut)
 def criar_cliente(cliente: ClienteCreate, db: Session = Depends(get_db)):
-    novo_cliente = Cliente(**cliente.dict())
-    db.add(novo_cliente)
+    if db.query(User).filter(User.email == cliente.email).first():
+        raise HTTPException(status_code=400, detail="Email já cadastrado")
+
+    novo = User(
+        email=cliente.email,
+        hashed_password=hash_password(cliente.password),
+        name=cliente.name,
+        company=cliente.company,
+        plan=cliente.plan,
+        status=cliente.status,
+        payment_status=cliente.payment_status,
+        last_payment=cliente.last_payment,
+        created_at=cliente.created_at,
+    )
+    db.add(novo)
     db.commit()
-    db.refresh(novo_cliente)
-    return novo_cliente
+    db.refresh(novo)
+    return novo
 
 @app.get("/clientes", response_model=List[ClienteOut])
 def listar_clientes(db: Session = Depends(get_db)):
-    return db.query(Cliente).all()
+    return db.query(User).all()

@@ -9,6 +9,15 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
+
+    name = Column(String, nullable=True)
+    company = Column(String, nullable=True)
+    plan = Column(String, nullable=True)
+    status = Column(String, default="active")
+    payment_status = Column(String, default="up-to-date")
+    last_payment = Column(Date, default=datetime.date.today)
+    created_at = Column(Date, default=datetime.date.today)
+
     integracoes = relationship("Integracao", back_populates="cliente")
 
 class Usuario(Base):
@@ -31,15 +40,3 @@ class Integracao(Base):
     appkey = Column(String, nullable=True)
 
     cliente = relationship("User", back_populates="integracoes")
-
-class Cliente(Base):
-    __tablename__ = "clientes"
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, nullable=False)
-    email = Column(String, nullable=False, unique=True)
-    company = Column(String, nullable=True)
-    plan = Column(String, nullable=True)
-    status = Column(String, default="active")
-    payment_status = Column(String, default="up-to-date")
-    last_payment = Column(Date, default=datetime.date.today)
-    created_at = Column(Date, default=datetime.date.today)

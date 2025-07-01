@@ -21,6 +21,7 @@ class IntegracaoOut(IntegracaoCreate):
 class ClienteCreate(BaseModel):
     name: str
     email: EmailStr
+    password: str
     company: str
     plan: str
     status: str = "active"
@@ -28,8 +29,16 @@ class ClienteCreate(BaseModel):
     last_payment: date
     created_at: date
 
-class ClienteOut(ClienteCreate):
+class ClienteOut(BaseModel):
     id: int
+    name: str
+    email: EmailStr
+    company: str
+    plan: str
+    status: str
+    payment_status: str
+    last_payment: date
+    created_at: date
 
     class Config:
         model_config = {"from_attributes": True}
