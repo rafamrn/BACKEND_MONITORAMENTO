@@ -187,7 +187,7 @@ def create_user_route(user: UserCreate, db: Session = Depends(get_db)):
 
 router = APIRouter(prefix="/integracoes", tags=["Integrações"])
 
-@router.post("/integracoes")
+@router.post("/")
 def criar_integracao(
     integracao: IntegracaoCreate,
     db: Session = Depends(get_db),
@@ -247,3 +247,4 @@ def deletar_cliente(cliente_id: int, db: Session = Depends(get_db)):
     db.commit()
     return
 
+app.include_router(router)
