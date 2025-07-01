@@ -187,10 +187,14 @@ def create_user_route(user: UserCreate, db: Session = Depends(get_db)):
 
 router = APIRouter(prefix="/integracoes", tags=["Integrações"])
 
-@router.post("/", response_model=IntegracaoOut)
-def criar_integracao(integracao: IntegracaoCreate, db: Session = Depends(get_db), usuario: User = Depends(get_current_user)):
+@router.post("/integracoes")
+def criar_integracao(
+    integracao: IntegracaoCreate,
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user)  # opcional, se usa autenticação
+):
     nova = Integracao(
-        cliente_id=usuario.id,
+        cliente_id=user.get("id") if user else None,  # opcional
         plataforma=integracao.plataforma,
         usuario=integracao.usuario,
         senha=integracao.senha
@@ -198,13 +202,7 @@ def criar_integracao(integracao: IntegracaoCreate, db: Session = Depends(get_db)
     db.add(nova)
     db.commit()
     db.refresh(nova)
-    return nova
-
-@router.get("/", response_model=list[IntegracaoOut])
-def listar_integracoes(db: Session = Depends(get_db), usuario: User = Depends(get_current_user)):
-    return db.query(Integracao).filter(Integracao.cliente_id == usuario.id).all()
-
-app.include_router(router)
+    return {"message": "Integração salva com sucesso", "id": nova.id}
 
 @app.get("/admin/integracoes", response_model=List[IntegracaoOut])
 def listar_todas_integracoes(db: Session = Depends(get_db), usuario_logado: User = Depends(get_current_user)):
@@ -248,3 +246,4 @@ def deletar_cliente(cliente_id: int, db: Session = Depends(get_db)):
     db.delete(cliente)
     db.commit()
     return
+
