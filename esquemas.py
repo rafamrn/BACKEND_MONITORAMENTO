@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from datetime import date
 from typing import Optional
 
@@ -38,12 +38,13 @@ class ClienteOut(BaseModel):
     id: int
     name: str
     email: EmailStr
-    company: Optional[str]
-    plan: Optional[str]
+    company: str
+    plan: str
     status: str
-    payment_status: str
-    last_payment: Optional[date]
-    created_at: Optional[date]
+    paymentStatus: str = Field(..., alias="payment_status")
+    lastPayment: date = Field(..., alias="last_payment")
+    createdAt: date = Field(..., alias="created_at")
 
     class Config:
-        from_attributes = True
+        orm_mode = True
+        allow_population_by_field_name = True

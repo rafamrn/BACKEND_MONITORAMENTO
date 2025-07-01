@@ -235,6 +235,6 @@ def criar_cliente(cliente: ClienteCreate, db: Session = Depends(get_db)):
     db.refresh(novo)
     return novo
 
-@app.get("/clientes", response_model=List[ClienteOut])
+@app.get("/clientes", response_model=List[ClienteOut], response_model_by_alias=False)
 def listar_clientes(db: Session = Depends(get_db)):
     return db.query(User).all()
