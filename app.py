@@ -238,3 +238,13 @@ def criar_cliente(cliente: ClienteCreate, db: Session = Depends(get_db)):
 @app.get("/clientes", response_model=List[ClienteOut], response_model_by_alias=False)
 def listar_clientes(db: Session = Depends(get_db)):
     return db.query(User).all()
+
+@app.delete("/clientes/{cliente_id}", status_code=204)
+def deletar_cliente(cliente_id: int, db: Session = Depends(get_db)):
+    cliente = db.query(User).filter(User.id == cliente_id).first()
+    if not cliente:
+        raise HTTPException(status_code=404, detail="Cliente não encontrado")
+    
+    db.delete(cliente)
+    db.commit()
+    return
