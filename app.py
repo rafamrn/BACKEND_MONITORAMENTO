@@ -29,6 +29,18 @@ deye = ApiDeye(settings.DEYE_USER, settings.DEYE_PASS, settings.DEYE_APPID, sett
 
 # App FastAPI
 app = FastAPI()
+# CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:8080",
+        "https://frontendmonitoramento-production.up.railway.app"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.add_middleware(
     TrustedHostMiddleware,
     allowed_hosts=["*"]
@@ -47,17 +59,6 @@ def get_db():
     finally:
         db.close()
 
-# CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:8080",
-        "https://frontendmonitoramento-production.up.railway.app"
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 # Dependência: verificar usuário autenticado
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
