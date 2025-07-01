@@ -1,6 +1,7 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Date
 from sqlalchemy.orm import relationship
 from database import Base
+import datetime
 
 class User(Base):
     __tablename__ = "users"
@@ -30,3 +31,17 @@ class Integracao(Base):
     appkey = Column(String, nullable=True)
 
     cliente = relationship("User", back_populates="integracoes")
+from database import Base
+import datetime
+
+class Cliente(Base):
+    __tablename__ = "clientes"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    email = Column(String, nullable=False, unique=True)
+    company = Column(String, nullable=True)
+    plan = Column(String, nullable=True)
+    status = Column(String, default="active")
+    payment_status = Column(String, default="up-to-date")
+    last_payment = Column(Date, default=datetime.date.today)
+    created_at = Column(Date, default=datetime.date.today)

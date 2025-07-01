@@ -8,8 +8,8 @@ from typing import List, Optional
 from config.settings import settings
 from database import SessionLocal
 from database import get_db
-from modelos import User, Integracao
-from esquemas import UserCreate, IntegracaoCreate, IntegracaoOut
+from modelos import User, Integracao, Cliente
+from esquemas import UserCreate, IntegracaoCreate, IntegracaoOut, ClienteCreate, ClienteOut
 from utils import agrupar_usinas_por_nome, hash_password, verify_password
 from auth import create_access_token, decode_access_token
 from clients.isolarcloud_client import ApiSolarCloud
@@ -211,3 +211,16 @@ def listar_todas_integracoes(db: Session = Depends(get_db), usuario_logado: User
         raise HTTPException(status_code=403, detail="Acesso restrito a administradores.")
     
     return db.query(Integracao).all()
+
+
+@app.post("/clientes", response_model=ClienteOut)
+def criar_cliente(cliente: ClienteCreate, db: Session = Depends(get_db)):
+    novo_cliente = Cliente(**cliente.dict())
+    db.add(novo_cliente)
+    db.commit()
+    db.refresh(novo_cliente)
+    return novo_cliente
+
+@app.get("/clientes", response_model=List[ClienteOut])
+def listar_clientes(db: Session = Depends(get_db)):
+    return db.query(Cliente).all()
