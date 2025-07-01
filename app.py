@@ -213,6 +213,13 @@ def criar_integracao(
     db.refresh(nova)
     return {"message": "Integração salva com sucesso", "id": nova.id}
 
+@router.get("/", response_model=List[IntegracaoOut])
+def listar_integracoes_do_cliente(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user)
+):
+    return db.query(Integracao).filter(Integracao.cliente_id == user.id).all()
+
 @app.get("/admin/integracoes", response_model=List[IntegracaoOut])
 def listar_todas_integracoes(db: Session = Depends(get_db), usuario_logado: User = Depends(get_current_user)):
     if not usuario_logado.is_admin:
