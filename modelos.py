@@ -31,8 +31,6 @@ class Integracao(Base):
     appkey = Column(String, nullable=True)
 
     cliente = relationship("User", back_populates="integracoes")
-from database import Base
-import datetime
 
 class Cliente(Base):
     __tablename__ = "clientes"
