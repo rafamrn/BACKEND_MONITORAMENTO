@@ -8,7 +8,7 @@ from typing import List, Optional
 from config.settings import settings
 from database import SessionLocal
 from database import get_db
-from modelos import User
+from modelos import User, Integracao
 from esquemas import UserCreate, IntegracaoCreate, IntegracaoOut, ClienteCreate, ClienteOut
 from utils import agrupar_usinas_por_nome, hash_password, verify_password
 from auth import create_access_token, decode_access_token
