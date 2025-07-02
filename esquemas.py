@@ -21,17 +21,10 @@ class UserCreate(BaseModel):
 # --------------------------
 
 class ClienteCreate(BaseModel):
-    email: EmailStr
-    password: str
-    name: str
     company: Optional[str]
     cnpj: Optional[str]
     telefone: Optional[str]
     plan: str
-    status: str
-    payment_status: str
-    last_payment: date
-    created_at: date
 
 class ClienteOut(BaseModel):
     id: int
