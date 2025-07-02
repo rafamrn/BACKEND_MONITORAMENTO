@@ -38,7 +38,7 @@ app.add_middleware(
 )
 
 # ✅ HTTPS redirect (apenas em produção)
-import os
+
 if os.getenv("ENV") == "production":
     app.add_middleware(HTTPSRedirectMiddleware)
 
@@ -79,6 +79,18 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     
     return user
 
+def get_current_admin_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
+    email = decode_access_token(token)
+    if not email:
+        raise HTTPException(status_code=401, detail="Token inválido ou expirado")
+
+    user = db.query(User).filter(User.email == email).first()
+    if not user or not user.is_admin:
+        raise HTTPException(status_code=403, detail="Acesso restrito a administradores.")
+    
+    return user
+
+
 # Rotas
 @app.get("/usina", response_model=List[UsinaModel])
 def listar_usinas(usuario_logado: User = Depends(get_current_user)):
@@ -110,17 +122,6 @@ def obter_dados_tecnicos(
     Retorna dados técnicos com base na usina.
     """
     return isolarcloud.get_dados_tecnicos(plant_id=plant_id)
-
-
-@app.post("/register")
-def register(user: UserCreate, db: Session = Depends(get_db)):
-    if db.query(User).filter(User.email == user.email).first():
-        raise HTTPException(status_code=400, detail="Usuário já existe")
-    
-    novo_usuario = User(email=user.email, hashed_password=hash_password(user.password))
-    db.add(novo_usuario)
-    db.commit()
-    return {"message": f"Usuário '{user.email}' criado com sucesso!"}
 
 @app.post("/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
@@ -264,3 +265,44 @@ def deletar_cliente(cliente_id: int, db: Session = Depends(get_db)):
     return
 
 app.include_router(router)
+
+@router.put("/admin/integracoes/{id}")
+async def atualizar_chaves_integracao(id: int, payload: dict, db: Session = Depends(get_db), usuario: User = Depends(get_current_admin_user)):
+    integracao = db.query(Integracao).filter(Integracao.id == id).first()
+    if not integracao:
+        raise HTTPException(status_code=404, detail="Integração não encontrada")
+
+    integracao.appkey = payload.get("appkey")
+    integracao.x_access_key = payload.get("x_access_key")
+    db.commit()
+    db.refresh(integracao)
+    return {"detail": "Chaves atualizadas com sucesso"}
+
+admin_router = APIRouter(prefix="/admin", tags=["Admin"])
+
+@admin_router.get("/integracoes", response_model=List[IntegracaoOut])
+def listar_todas_integracoes(
+    db: Session = Depends(get_db), 
+    usuario_logado: User = Depends(get_current_admin_user)
+):
+    return db.query(Integracao).all()
+
+@admin_router.put("/integracoes/{id}")
+def atualizar_chaves_integracao(
+    id: int, 
+    payload: dict, 
+    db: Session = Depends(get_db), 
+    usuario: User = Depends(get_current_admin_user)
+):
+    integracao = db.query(Integracao).filter(Integracao.id == id).first()
+    if not integracao:
+        raise HTTPException(status_code=404, detail="Integração não encontrada")
+
+    integracao.appkey = payload.get("appkey")
+    integracao.x_access_key = payload.get("x_access_key")
+    db.commit()
+    db.refresh(integracao)
+    return {"detail": "Chaves atualizadas com sucesso"}
+
+app.include_router(router)
+app.include_router(admin_router)
