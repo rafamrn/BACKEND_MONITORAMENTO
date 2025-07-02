@@ -144,14 +144,19 @@ def register_user(request: RegisterRequest, db: Session = Depends(get_db)):
 @app.post("/clientes")
 def criar_cliente(cliente: ClienteCreate, db: Session = Depends(get_db)):
     novo = User(
-        company=cliente.company,
-        cnpj=cliente.cnpj,
-        telefone=cliente.telefone,
-        plan=cliente.plan,
-        status="active",
-        payment_status="up-to-date",
-        created_at=date.today()
-    )
+    email=None,  # será preenchido depois
+    hashed_password=hash_password("senha_temporaria"),  # ← solução provisória
+    name=None,
+    company=cliente.company,
+    cnpj=cliente.cnpj,
+    telefone=cliente.telefone,
+    plan=cliente.plan,
+    status="active",
+    payment_status="up-to-date",
+    last_payment=datetime.date.today(),
+    created_at=datetime.date.today(),
+    is_admin=False,
+)
 
     db.add(novo)
     db.commit()
