@@ -99,3 +99,8 @@ class RegisterRequest(BaseModel):
     password: constr(min_length=6)
     confirmPassword: str
     token: uuid.UUID
+
+class ConviteCreate(BaseModel):
+    email: EmailStr
+    expiracao: Optional[datetime] = None  # Pode ser gerado automaticamente no backend
+
