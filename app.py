@@ -1,12 +1,11 @@
 from fastapi import FastAPI, Depends, HTTPException, status, Query, APIRouter
-from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.encoders import jsonable_encoder
-from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from dependencies import get_current_admin_user, get_current_user
-from typing import List, Optional
+from typing import List
 from config.settings import settings
 from database import SessionLocal
 from datetime import datetime, timedelta, date
@@ -14,7 +13,7 @@ from database import get_db
 from modelos import User, Integracao, Convite
 from esquemas import UserCreate, IntegracaoCreate, IntegracaoOut, ClienteCreate, ClienteOut, RegistroComConvite, RegisterRequest
 from utils import agrupar_usinas_por_nome, hash_password, verify_password
-from auth import create_access_token, decode_access_token
+from auth import create_access_token
 from clients.isolarcloud_client import ApiSolarCloud
 from clients.huawei_client import ApiHuawei
 from clients.deye_client import ApiDeye
@@ -22,10 +21,8 @@ from models.usina import UsinaModel
 from passlib.hash import bcrypt
 from routers import projection
 from uuid import uuid4
-from pydantic import BaseModel, EmailStr
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from routes import convites
-import tempfile
 import os
 from services.performance_service import get_performance_diaria, get_performance_7dias, get_performance_30dias
 
@@ -205,8 +202,7 @@ def listar_todas_integracoes(db: Session = Depends(get_db), usuario_logado: User
     return db.query(Integracao).all()
 
 
-from modelos import Convite  # ✅ certifique-se de importar isso
-import uuid  # ✅ importar no topo do arquivo, se ainda não estiver
+
 
 @app.post("/clientes")
 def criar_cliente(cliente: ClienteCreate, db: Session = Depends(get_db)):
@@ -218,6 +214,8 @@ def criar_cliente(cliente: ClienteCreate, db: Session = Depends(get_db)):
         hashed_password=hash_password(cliente.password),
         name=cliente.name,
         company=cliente.company,
+        cnpj=cliente.cnpj,                # ✅ NOVO
+        telefone=cliente.telefone,        # ✅ NOVO
         plan=cliente.plan,
         status=cliente.status,
         payment_status=cliente.payment_status,
@@ -229,15 +227,14 @@ def criar_cliente(cliente: ClienteCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(novo)
 
-    # ✅ Criação do convite com token
-    token = str(uuid.uuid4())
-    expiracao = datetime.utcnow() + timedelta(days=7)  # ✅ Definindo a expiração
+    token = str(uuid4())
+    expiracao = datetime.utcnow() + timedelta(days=7)
 
     convite = Convite(
         email=cliente.email,
         token=token,
         cliente_id=novo.id,
-        expiracao=expiracao,  # ✅ adicionando aqui
+        expiracao=expiracao,
     )
 
     db.add(convite)

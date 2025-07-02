@@ -51,25 +51,36 @@ class ClienteCreate(BaseModel):
 
 class ClienteOut(BaseModel):
     id: int
-    name: str
-    email: EmailStr
-    company: str
-    plan: str
-    status: str
-    paymentStatus: str = Field(..., alias="payment_status")
-    lastPayment: date = Field(..., alias="last_payment")
-    createdAt: date = Field(..., alias="created_at")
+    email: str
+    name: Optional[str]
+    company: Optional[str]
+    cnpj: Optional[str]
+    telefone: Optional[str]
+    plan: Optional[str]
+    status: Optional[str]
+    payment_status: Optional[str]
+    last_payment: Optional[datetime.date]
+    created_at: Optional[datetime.date]
+
+    class Config:
+        orm_mode = True
 
     class Config:
         from_attributes = True
         validate_by_name = True
 
 class ClienteCreate(BaseModel):
+    email: EmailStr
+    password: str
     name: str
-    company: str
+    company: Optional[str]
     cnpj: Optional[str]
     telefone: Optional[str]
     plan: str
+    status: str
+    payment_status: str
+    last_payment: datetime.date
+    created_at: datetime.date
 
 class ConviteOut(BaseModel):
     id: int
