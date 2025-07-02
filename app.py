@@ -344,7 +344,7 @@ def register_user(data: RegisterRequest, db: Session = Depends(get_db)):
 
     if not convite:
         raise HTTPException(status_code=404, detail="Token de convite inválido")
-    if convite.utilizado:
+    if convite.usado:
         raise HTTPException(status_code=400, detail="Este token já foi utilizado")
     if convite.email != data.email:
         raise HTTPException(status_code=400, detail="O token não corresponde a este email")
