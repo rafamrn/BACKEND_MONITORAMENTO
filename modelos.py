@@ -27,6 +27,7 @@ class Integracao(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     cliente_id = Column(Integer, ForeignKey("users.id"))
+    nome = Column(String, nullable=True)
     plataforma = Column(String, nullable=False)
     username = Column(String, nullable=False)
     senha = Column(String, nullable=False)

@@ -200,12 +200,12 @@ def criar_integracao(
     print("🔧 Dados recebidos:", integracao)
 
     nova = Integracao(
-        cliente_id=user.id,
-        plataforma=integracao.plataforma,
-        username=integracao.username,
-        senha=integracao.senha,
-        nome=user.name
-    )
+    cliente_id=user.id,
+    nome=user.name,  # <-- ESSENCIAL
+    plataforma=integracao.plataforma,
+    username=integracao.username,
+    senha=integracao.senha,
+)
     db.add(nova)
     db.commit()
     db.refresh(nova)
