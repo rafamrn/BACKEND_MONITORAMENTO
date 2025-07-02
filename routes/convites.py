@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from modelos import Convite
-from schemas import ConviteCreate, ConviteOut
+from esquemas import ConviteCreate, ConviteOut
 from app import get_db, get_current_admin_user
 import secrets
 from datetime import datetime, timedelta
