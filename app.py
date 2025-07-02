@@ -53,11 +53,6 @@ app.add_middleware(
     allowed_hosts=["*"]
 )
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
-app.include_router(projection.router)
-
-class UserCreate(BaseModel):
-    email: EmailStr
-    password: str
 
 def get_db():
     db = SessionLocal()
@@ -264,8 +259,6 @@ def deletar_cliente(cliente_id: int, db: Session = Depends(get_db)):
     db.commit()
     return
 
-app.include_router(router)
-
 @router.put("/admin/integracoes/{id}")
 async def atualizar_chaves_integracao(id: int, payload: dict, db: Session = Depends(get_db), usuario: User = Depends(get_current_admin_user)):
     integracao = db.query(Integracao).filter(Integracao.id == id).first()
@@ -304,5 +297,13 @@ def atualizar_chaves_integracao(
     db.refresh(integracao)
     return {"detail": "Chaves atualizadas com sucesso"}
 
+
+
+
+
+
+
+# Routers externos
+app.include_router(projection.router)
 app.include_router(router)
 app.include_router(admin_router)
