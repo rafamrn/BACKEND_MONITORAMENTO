@@ -43,7 +43,7 @@ class Convite(Base):
     __tablename__ = "convites"
 
     id = Column(Integer, primary_key=True, index=True)
-    email = Column(String, nullable=False)
+    email = Column(String, unique=True, index=True, nullable=True)
     token = Column(String, unique=True, nullable=False)
     cliente_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     usado = Column(Boolean, default=False)
