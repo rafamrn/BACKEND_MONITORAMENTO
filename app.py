@@ -230,10 +230,13 @@ def criar_cliente(cliente: ClienteCreate, db: Session = Depends(get_db)):
 
     # ✅ Criação do convite com token
     token = str(uuid.uuid4())
+    expiracao = datetime.utcnow() + timedelta(days=7)  # ✅ Definindo a expiração
+
     convite = Convite(
         email=cliente.email,
         token=token,
         cliente_id=novo.id,
+        expiracao=expiracao,  # ✅ adicionando aqui
     )
 
     db.add(convite)
