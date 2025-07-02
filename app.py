@@ -9,7 +9,7 @@ from dependencies import get_current_admin_user, get_current_user
 from typing import List, Optional
 from config.settings import settings
 from database import SessionLocal
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from database import get_db
 from modelos import User, Integracao, Convite
 from esquemas import UserCreate, IntegracaoCreate, IntegracaoOut, ClienteCreate, ClienteOut, RegistroComConvite, RegisterRequest
@@ -338,28 +338,33 @@ def register_with_token(dados: RegistroComConvite, db: Session = Depends(get_db)
 
 @app.post("/register")
 def register_user(request: RegisterRequest, db: Session = Depends(get_db)):
+    # 1. Valida o token
     convite = db.query(Convite).filter(Convite.token == str(request.token)).first()
-
     if not convite:
         raise HTTPException(status_code=400, detail="Token inválido ou não encontrado")
 
+    # 2. Verifica se o token já foi usado
     if convite.usado:
         raise HTTPException(status_code=400, detail="Token já utilizado")
+    if convite.expiracao < datetime.utcnow():
+        raise HTTPException(status_code=400, detail="Token expirado")
 
-    # Verifica se já existe usuário com esse e-mail (do convite!)
-    existing_user = db.query(User).filter(User.email == convite.email).first()
-    if existing_user:
+    # 3. Verifica se o e-mail do convite já está cadastrado
+    if db.query(User).filter(User.email == convite.email).first():
         raise HTTPException(status_code=400, detail="E-mail já registrado")
 
+    # 4. Cria o novo usuário com base no e-mail do convite
     novo_usuario = User(
-        name=request.name,
+        name=request.name.strip(),
         email=convite.email,
         hashed_password=bcrypt.hash(request.password),
         company=None,
         plan=None,
         is_admin=False,
-        created_at=datetime.date.today(),
+        created_at=date.today(),
     )
+
+    # 5. Salva o usuário e marca o convite como usado
     db.add(novo_usuario)
     db.commit()
     db.refresh(novo_usuario)
