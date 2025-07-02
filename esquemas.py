@@ -56,3 +56,22 @@ class ClienteOut(BaseModel):
     class Config:
         from_attributes = True
         validate_by_name = True
+
+class ConviteCreate(BaseModel):
+    email: EmailStr
+    cliente_id: int
+
+class ConviteOut(BaseModel):
+    id: int
+    email: str
+    token: str
+    usado: bool
+    expiracao: datetime
+    criado_em: datetime
+
+    class Config:
+        orm_mode = True
+
+class RegistroComConvite(BaseModel):
+    password: str
+    token: str

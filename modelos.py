@@ -35,3 +35,17 @@ class Integracao(Base):
     appkey = Column(String, nullable=True)
 
     cliente = relationship("User", back_populates="integracoes")
+
+    
+class Convite(Base):
+    __tablename__ = "convites"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, nullable=False)
+    token = Column(String, unique=True, nullable=False)
+    cliente_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
+    usado = Column(Boolean, default=False)
+    expiracao = Column(DateTime, nullable=False)
+    criado_em = Column(DateTime, default=datetime.datetime.utcnow)
+
+    cliente = relationship("User")

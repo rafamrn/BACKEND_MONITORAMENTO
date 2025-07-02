@@ -8,9 +8,10 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from config.settings import settings
 from database import SessionLocal
+from datetime import datetime
 from database import get_db
-from modelos import User, Integracao
-from esquemas import UserCreate, IntegracaoCreate, IntegracaoOut, ClienteCreate, ClienteOut
+from modelos import User, Integracao, Convite
+from esquemas import UserCreate, IntegracaoCreate, IntegracaoOut, ClienteCreate, ClienteOut, RegistroComConvite
 from utils import agrupar_usinas_por_nome, hash_password, verify_password
 from auth import create_access_token, decode_access_token
 from clients.isolarcloud_client import ApiSolarCloud
@@ -20,6 +21,7 @@ from models.usina import UsinaModel
 from routers import projection
 from pydantic import BaseModel, EmailStr
 from starlette.middleware.trustedhost import TrustedHostMiddleware
+from routes import convites
 import tempfile
 import os
 from services.performance_service import get_performance_diaria, get_performance_7dias, get_performance_30dias
@@ -54,6 +56,7 @@ app.add_middleware(
     allowed_hosts=["*"]
 )
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
+
 
 def get_db():
     db = SessionLocal()
@@ -307,8 +310,35 @@ def atualizar_chaves_integracao(
     db.refresh(integracao)
     return {"detail": "Chaves atualizadas com sucesso"}
 
+router = APIRouter()
 
+@router.post("/register_with_token")
+def register_with_token(dados: RegistroComConvite, db: Session = Depends(get_db)):
+    convite = db.query(Convite).filter_by(token=dados.token, usado=False).first()
 
+    if not convite:
+        raise HTTPException(status_code=404, detail="Convite inválido ou já usado")
+
+    if convite.expiracao < datetime.utcnow():
+        raise HTTPException(status_code=400, detail="Convite expirado")
+
+    # Verifica se já existe usuário com esse email
+    if db.query(User).filter(User.email == convite.email).first():
+        raise HTTPException(status_code=400, detail="E-mail já registrado")
+
+    # Cria o novo usuário
+    novo_usuario = User(
+        email=convite.email,
+        hashed_password=hash_password(dados.password),
+        cliente_id=convite.cliente_id,
+    )
+    db.add(novo_usuario)
+
+    # Marca o convite como usado
+    convite.usado = True
+
+    db.commit()
+    return {"msg": "Cadastro realizado com sucesso. Agora você pode fazer login."}
 
 
 
@@ -317,3 +347,4 @@ def atualizar_chaves_integracao(
 app.include_router(projection.router)
 app.include_router(router)
 app.include_router(admin_router)
+app.include_router(convites.router)
