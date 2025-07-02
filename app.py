@@ -11,7 +11,7 @@ from typing import List, Optional
 from uuid import uuid4
 import os
 from passlib.hash import bcrypt
-
+import secrets
 # Internos
 from database import SessionLocal, get_db
 from modelos import User, Integracao, Convite
