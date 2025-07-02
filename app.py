@@ -147,7 +147,7 @@ def criar_cliente(cliente: ClienteCreate, db: Session = Depends(get_db)):
     # Gera valores placeholders obrigatórios
     email_fake = f"{secrets.token_hex(8)}@placeholder.com"
     senha_fake = secrets.token_urlsafe(12)
-    hashed = bcrypt.hashpw(senha_fake.encode('utf-8'), bcrypt.gensalt())
+    hashed = bcrypt.hash(senha_fake)
 
     novo_cliente = User(
         email=email_fake,
