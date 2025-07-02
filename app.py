@@ -143,36 +143,36 @@ def register_user(request: RegisterRequest, db: Session = Depends(get_db)):
 
 @app.post("/clientes")
 def criar_cliente(cliente: ClienteCreate, db: Session = Depends(get_db)):
-    if db.query(User).filter(User.email == cliente.email).first():
-        raise HTTPException(status_code=400, detail="Email já cadastrado")
-
     novo = User(
-        email=cliente.email,
-        hashed_password=hash_password(cliente.password),
-        name=cliente.name,
         company=cliente.company,
         cnpj=cliente.cnpj,
         telefone=cliente.telefone,
         plan=cliente.plan,
-        status=cliente.status,
-        payment_status=cliente.payment_status,
-        last_payment=cliente.last_payment,
-        created_at=cliente.created_at,
+        status="active",
+        payment_status="up-to-date",
+        created_at=date.today()
     )
+
     db.add(novo)
     db.commit()
     db.refresh(novo)
 
+    # Gera um token de convite para o cliente completar o cadastro depois
+    token = str(uuid4())
+    expiracao = datetime.utcnow() + timedelta(days=7)
+
     convite = Convite(
-        email=cliente.email,
-        token=str(uuid4()),
+        email="",  # deixamos vazio ou usamos um placeholder
+        token=token,
         cliente_id=novo.id,
-        expiracao=datetime.utcnow() + timedelta(days=7)
+        expiracao=expiracao
     )
+
     db.add(convite)
     db.commit()
 
-    return novo
+    return {"message": "Cliente criado com sucesso", "token": token}
+
 
 @app.get("/clientes", response_model=List[ClienteOut])
 def listar_clientes(db: Session = Depends(get_db)):
