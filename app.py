@@ -204,7 +204,10 @@ def listar_todas_integracoes(db: Session = Depends(get_db), usuario_logado: User
     return db.query(Integracao).all()
 
 
-@app.post("/clientes", response_model=ClienteOut)
+from modelos import Convite  # ✅ certifique-se de importar isso
+import uuid  # ✅ importar no topo do arquivo, se ainda não estiver
+
+@app.post("/clientes")
 def criar_cliente(cliente: ClienteCreate, db: Session = Depends(get_db)):
     if db.query(User).filter(User.email == cliente.email).first():
         raise HTTPException(status_code=400, detail="Email já cadastrado")
@@ -220,23 +223,32 @@ def criar_cliente(cliente: ClienteCreate, db: Session = Depends(get_db)):
         last_payment=cliente.last_payment,
         created_at=cliente.created_at,
     )
+
     db.add(novo)
     db.commit()
     db.refresh(novo)
 
-    # 🧠 Gera token e salva na tabela convites
-    token = str(uuid4())
+    # ✅ Criação do convite com token
+    token = str(uuid.uuid4())
     convite = Convite(
         email=cliente.email,
-        cliente_id=novo.id,
         token=token,
-        expiracao=datetime.utcnow() + timedelta(days=7),  # expira em 7 dias
-        usado=False
+        cliente_id=novo.id,
     )
+
     db.add(convite)
     db.commit()
 
-    return novo
+    return {
+        "mensagem": "Cliente e convite criados com sucesso.",
+        "cliente": {
+            "id": novo.id,
+            "email": novo.email,
+            "name": novo.name,
+        },
+        "token": token
+    }
+
 
 @app.get("/clientes", response_model=List[ClienteOut], response_model_by_alias=False)
 def listar_clientes(db: Session = Depends(get_db)):
