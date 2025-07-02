@@ -1,37 +1,42 @@
 from fastapi import FastAPI, Depends, HTTPException, status, Query, APIRouter
-from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
+from fastapi.responses import FileResponse
 from fastapi.encoders import jsonable_encoder
-from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordRequestForm
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 from sqlalchemy.orm import Session
-from dependencies import get_current_admin_user, get_current_user
-from typing import List, Optional
-from config.settings import settings
-from database import SessionLocal
 from datetime import datetime, timedelta, date
-from database import get_db
+from typing import List, Optional
+from uuid import uuid4
+import os
+
+# Internos
+from database import SessionLocal, get_db
 from modelos import User, Integracao, Convite
-from esquemas import UserCreate, IntegracaoCreate, IntegracaoOut, ClienteCreate, ClienteOut, RegistroComConvite, RegisterRequest
+from esquemas import (
+    UserCreate, IntegracaoCreate, IntegracaoOut, ClienteCreate, ClienteOut,
+    RegistroComConvite, RegisterRequest
+)
 from utils import agrupar_usinas_por_nome, hash_password, verify_password
 from auth import create_access_token, decode_access_token
+from dependencies import get_current_admin_user, get_current_user
+from config.settings import settings
+from services.performance_service import (
+    get_performance_diaria, get_performance_7dias, get_performance_30dias
+)
+from models.usina import UsinaModel
 from clients.isolarcloud_client import ApiSolarCloud
 from clients.huawei_client import ApiHuawei
 from clients.deye_client import ApiDeye
-from models.usina import UsinaModel
-from passlib.hash import bcrypt
 from routers import projection
-from uuid import uuid4
-from pydantic import BaseModel, EmailStr
-from starlette.middleware.trustedhost import TrustedHostMiddleware
 from routes import convites
-import tempfile
-import os
-from services.performance_service import get_performance_diaria, get_performance_7dias, get_performance_30dias
+from passlib.hash import bcrypt
 
+# ============== ⬇ APP ==============
 app = FastAPI()
 
-# ✅ CORS no topo, antes de tudo
+# ============== ⬇ MIDDLEWARES ==============
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -43,30 +48,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ✅ HTTPS redirect (apenas em produção)
-
 if os.getenv("ENV") == "production":
     app.add_middleware(HTTPSRedirectMiddleware)
 
-# Instanciando clientes das APIs externas
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
+
+# ============== ⬇ CLIENTES DAS APIS ==============
 isolarcloud = ApiSolarCloud(settings.ISOLAR_USER, settings.ISOLAR_PASS)
 huawei = ApiHuawei(settings.HUAWEI_USER, settings.HUAWEI_PASS)
 deye = ApiDeye(settings.DEYE_USER, settings.DEYE_PASS, settings.DEYE_APPID, settings.DEYE_APPSECRET)
 
+# ============== ⬇ ROTAS PRINCIPAIS ==============
 
-app.add_middleware(
-    TrustedHostMiddleware,
-    allowed_hosts=["*"]
-)
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-# Rotas
 @app.get("/usina", response_model=List[UsinaModel])
 def listar_usinas(usuario_logado: User = Depends(get_current_user)):
     usinas = deye.get_usinas() + isolarcloud.get_usinas()
@@ -89,121 +82,64 @@ def performance_30dias(db: Session = Depends(get_db)):
     return get_performance_30dias(isolarcloud, deye, db)
 
 @app.get("/dados_tecnicos")
-def obter_dados_tecnicos(
-    plant_id: int = Query(...),
-    usuario_logado: User = Depends(get_current_user)
-):
-    """
-    Retorna dados técnicos com base na usina.
-    """
+def obter_dados_tecnicos(plant_id: int = Query(...), usuario_logado: User = Depends(get_current_user)):
     return isolarcloud.get_dados_tecnicos(plant_id=plant_id)
 
-@app.post("/login")
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == form_data.username).first()
-    if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuário não encontrado")
-    if not verify_password(form_data.password, user.hashed_password):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Senha incorreta")
+@app.get("/api/geracao")
+def obter_geracao(period: str = Query(..., regex="^(day|month|year)$"), date: str = Query(...), plant_id: int = Query(...), usuario_logado: User = Depends(get_current_user)):
+    return isolarcloud.get_geracao(period=period, date=date, plant_id=plant_id)
 
-    access_token = create_access_token(data={"sub": user.email}, is_admin=False)
-    return {"access_token": access_token, "token_type": "bearer"}
+@app.get("/api/geracao/mensal")
+def obter_geracao_mensal(date: str = Query(..., regex=r"^\d{4}-\d{2}$"), plant_id: int = Query(...), usuario_logado: User = Depends(get_current_user)):
+    return isolarcloud.get_geracao_mes(data=date, plant_id=plant_id)
+
+@app.get("/api/geracao/anual")
+def obter_geracao_anual(year: str = Query(..., regex=r"^\d{4}$"), plant_id: int = Query(...), usuario_logado: User = Depends(get_current_user)):
+    return isolarcloud.get_geracao_ano(ano=year, plant_id=plant_id)
 
 @app.get("/protegido")
 def rota_protegida(usuario_logado: User = Depends(get_current_user)):
     return {"msg": f"Bem-vindo, {usuario_logado.email}!"}
 
-@app.get("/api/geracao")
-def obter_geracao(
-    period: str = Query(..., regex="^(day|month|year)$"),
-    date: str = Query(...),
-    plant_id: int = Query(...),
-    usuario_logado: User = Depends(get_current_user)
-):
-    """
-    Retorna dados de geração com base na usina, data e tipo de período selecionado.
-    """
-    return isolarcloud.get_geracao(period=period, date=date, plant_id=plant_id)
+@app.post("/login")
+def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == form_data.username).first()
+    if not user or not verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Credenciais inválidas")
 
-@app.get("/api/geracao/mensal")
-def obter_geracao_mensal(
-    date: str = Query(..., regex=r"^\d{4}-\d{2}$"),  # exemplo: "2025-05"
-    plant_id: int = Query(...),
-    usuario_logado: User = Depends(get_current_user)
-):
-    """
-    Retorna geração mensal (p1) da usina com base em um mês específico.
-    """
-    try:
-        return isolarcloud.get_geracao_mes(data=date, plant_id=plant_id)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    
-@app.get("/api/geracao/anual")
-def obter_geracao_anual(
-    year: str = Query(..., regex=r"^\d{4}$"),  # Ex: "2025"
-    plant_id: int = Query(...),
-    usuario_logado: User = Depends(get_current_user)
-):
-    """
-    Retorna a geração mensal (p1) para cada mês do ano informado.
-    """
-    try:
-        return isolarcloud.get_geracao_ano(ano=year, plant_id=plant_id)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    
-@app.post("/users")
-def create_user_route(user: UserCreate, db: Session = Depends(get_db)):
-    user_exists = db.query(User).filter(User.email == user.email).first()
-    if user_exists:
-        raise HTTPException(status_code=400, detail="Usuário já existe.")
+    access_token = create_access_token(data={"sub": user.email}, is_admin=user.is_admin)
+    return {"access_token": access_token, "token_type": "bearer"}
 
-    db_user = User(
-        email=user.email,
-        hashed_password=hash_password(user.password)
+# ============== ⬇ REGISTRO DE CLIENTE COM CONVITE ==============
+
+@app.post("/register")
+def register_user(request: RegisterRequest, db: Session = Depends(get_db)):
+    convite = db.query(Convite).filter(Convite.token == str(request.token)).first()
+    if not convite:
+        raise HTTPException(status_code=400, detail="Token inválido ou não encontrado")
+    if convite.usado:
+        raise HTTPException(status_code=400, detail="Token já utilizado")
+    if convite.expiracao < datetime.utcnow():
+        raise HTTPException(status_code=400, detail="Token expirado")
+    if db.query(User).filter(User.email == convite.email).first():
+        raise HTTPException(status_code=400, detail="E-mail já registrado")
+
+    novo_usuario = User(
+        name=request.name.strip(),
+        email=convite.email,
+        hashed_password=bcrypt.hash(request.password),
+        company=None,
+        plan=None,
+        is_admin=False,
+        created_at=date.today(),
     )
-    db.add(db_user)
+    db.add(novo_usuario)
+    convite.usado = True
     db.commit()
-    db.refresh(db_user)
-    return {"message": "Usuário criado com sucesso", "user_id": db_user.id}
+    db.refresh(novo_usuario)
+    return {"message": "Usuário registrado com sucesso"}
 
-router = APIRouter(prefix="/integracoes", tags=["Integrações"])
-
-@router.post("/")
-def criar_integracao(
-    integracao: IntegracaoCreate,
-    db: Session = Depends(get_db),
-    user: User = Depends(get_current_user)
-):
-    print("🔧 Dados recebidos:", integracao)
-
-    nova = Integracao(
-    cliente_id=user.id,
-    nome=user.name,  # <-- ESSENCIAL
-    plataforma=integracao.plataforma,
-    username=integracao.username,
-    senha=integracao.senha,
-)
-    db.add(nova)
-    db.commit()
-    db.refresh(nova)
-    return {"message": "Integração salva com sucesso", "id": nova.id}
-
-@router.get("/", response_model=List[IntegracaoOut])
-def listar_integracoes_do_cliente(
-    db: Session = Depends(get_db),
-    user: User = Depends(get_current_user)
-):
-    return db.query(Integracao).filter(Integracao.cliente_id == user.id).all()
-
-@app.get("/admin/integracoes", response_model=List[IntegracaoOut])
-def listar_todas_integracoes(db: Session = Depends(get_db), usuario_logado: User = Depends(get_current_user)):
-    if not usuario_logado.is_admin:
-        raise HTTPException(status_code=403, detail="Acesso restrito a administradores.")
-    
-    return db.query(Integracao).all()
-
+# ============== ⬇ CLIENTES ==============
 
 @app.post("/clientes")
 def criar_cliente(cliente: ClienteCreate, db: Session = Depends(get_db)):
@@ -215,36 +151,30 @@ def criar_cliente(cliente: ClienteCreate, db: Session = Depends(get_db)):
         hashed_password=hash_password(cliente.password),
         name=cliente.name,
         company=cliente.company,
-        cnpj=cliente.cnpj,                # ✅ NOVO
-        telefone=cliente.telefone,        # ✅ NOVO
+        cnpj=cliente.cnpj,
+        telefone=cliente.telefone,
         plan=cliente.plan,
         status=cliente.status,
         payment_status=cliente.payment_status,
         last_payment=cliente.last_payment,
         created_at=cliente.created_at,
     )
-
     db.add(novo)
     db.commit()
     db.refresh(novo)
 
-    token = str(uuid4())
-    expiracao = datetime.utcnow() + timedelta(days=7)
-
     convite = Convite(
         email=cliente.email,
-        token=token,
+        token=str(uuid4()),
         cliente_id=novo.id,
-        expiracao=expiracao,
+        expiracao=datetime.utcnow() + timedelta(days=7)
     )
-
     db.add(convite)
     db.commit()
 
     return novo
 
-
-@app.get("/clientes", response_model=List[ClienteOut], response_model_by_alias=False)
+@app.get("/clientes", response_model=List[ClienteOut])
 def listar_clientes(db: Session = Depends(get_db)):
     return db.query(User).all()
 
@@ -253,128 +183,59 @@ def deletar_cliente(cliente_id: int, db: Session = Depends(get_db)):
     cliente = db.query(User).filter(User.id == cliente_id).first()
     if not cliente:
         raise HTTPException(status_code=404, detail="Cliente não encontrado")
-    
     db.delete(cliente)
     db.commit()
-    return
 
-@router.put("/admin/integracoes/{id}")
-async def atualizar_chaves_integracao(id: int, payload: dict, db: Session = Depends(get_db), usuario: User = Depends(get_current_admin_user)):
-    integracao = db.query(Integracao).filter(Integracao.id == id).first()
-    if not integracao:
-        raise HTTPException(status_code=404, detail="Integração não encontrada")
+# ============== ⬇ INTEGRAÇÕES ==============
 
-    integracao.appkey = payload.get("appkey")
-    integracao.x_access_key = payload.get("x_access_key")
+integracao_router = APIRouter(prefix="/integracoes", tags=["Integrações"])
+
+@integracao_router.post("/")
+def criar_integracao(integracao: IntegracaoCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    nova = Integracao(
+        cliente_id=user.id,
+        nome=user.name,
+        plataforma=integracao.plataforma,
+        username=integracao.username,
+        senha=integracao.senha,
+    )
+    db.add(nova)
     db.commit()
-    db.refresh(integracao)
-    return {"detail": "Chaves atualizadas com sucesso"}
+    db.refresh(nova)
+    return {"message": "Integração salva com sucesso", "id": nova.id}
+
+@integracao_router.get("/", response_model=List[IntegracaoOut])
+def listar_integracoes(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return db.query(Integracao).filter(Integracao.cliente_id == user.id).all()
+
+# ============== ⬇ ADMIN ==============
 
 admin_router = APIRouter(prefix="/admin", tags=["Admin"])
 
 @admin_router.get("/integracoes", response_model=List[IntegracaoOut])
-def listar_todas_integracoes(
-    db: Session = Depends(get_db), 
-    usuario_logado: User = Depends(get_current_admin_user)
-):
+def listar_integracoes_admin(db: Session = Depends(get_db), usuario_logado: User = Depends(get_current_admin_user)):
     integracoes = db.query(Integracao).all()
-    
     resultado = []
     for i in integracoes:
         integracao_dict = jsonable_encoder(i)
         integracao_dict["nome"] = i.cliente.name if i.cliente else None
         resultado.append(integracao_dict)
-    
     return resultado
 
 @admin_router.put("/integracoes/{id}")
-def atualizar_chaves_integracao(
-    id: int, 
-    payload: dict, 
-    db: Session = Depends(get_db), 
-    usuario: User = Depends(get_current_admin_user)
-):
+def atualizar_chaves_admin(id: int, payload: dict, db: Session = Depends(get_db), usuario: User = Depends(get_current_admin_user)):
     integracao = db.query(Integracao).filter(Integracao.id == id).first()
     if not integracao:
         raise HTTPException(status_code=404, detail="Integração não encontrada")
-
     integracao.appkey = payload.get("appkey")
     integracao.x_access_key = payload.get("x_access_key")
     db.commit()
     db.refresh(integracao)
     return {"detail": "Chaves atualizadas com sucesso"}
 
-router = APIRouter()
+# ============== ⬇ INCLUDES ==============
 
-@router.post("/register_with_token")
-def register_with_token(dados: RegistroComConvite, db: Session = Depends(get_db)):
-    convite = db.query(Convite).filter_by(token=dados.token, usado=False).first()
-
-    if not convite:
-        raise HTTPException(status_code=404, detail="Convite inválido ou já usado")
-
-    if convite.expiracao < datetime.utcnow():
-        raise HTTPException(status_code=400, detail="Convite expirado")
-
-    # Verifica se já existe usuário com esse email
-    if db.query(User).filter(User.email == convite.email).first():
-        raise HTTPException(status_code=400, detail="E-mail já registrado")
-
-    # Cria o novo usuário
-    novo_usuario = User(
-        email=convite.email,
-        hashed_password=hash_password(dados.password),
-        cliente_id=convite.cliente_id,
-    )
-    db.add(novo_usuario)
-
-    # Marca o convite como usado
-    convite.usado = True
-
-    db.commit()
-    return {"msg": "Cadastro realizado com sucesso. Agora você pode fazer login."}
-
-@app.post("/register")
-def register_user(request: RegisterRequest, db: Session = Depends(get_db)):
-    # 1. Valida o token
-    convite = db.query(Convite).filter(Convite.token == str(request.token)).first()
-    if not convite:
-        raise HTTPException(status_code=400, detail="Token inválido ou não encontrado")
-
-    # 2. Verifica se o token já foi usado
-    if convite.usado:
-        raise HTTPException(status_code=400, detail="Token já utilizado")
-    if convite.expiracao < datetime.utcnow():
-        raise HTTPException(status_code=400, detail="Token expirado")
-
-    # 3. Verifica se o e-mail do convite já está cadastrado
-    if db.query(User).filter(User.email == convite.email).first():
-        raise HTTPException(status_code=400, detail="E-mail já registrado")
-
-    # 4. Cria o novo usuário com base no e-mail do convite
-    novo_usuario = User(
-        name=request.name.strip(),
-        email=convite.email,
-        hashed_password=bcrypt.hash(request.password),
-        company=None,
-        plan=None,
-        is_admin=False,
-        created_at=date.today(),
-    )
-
-    # 5. Salva o usuário e marca o convite como usado
-    db.add(novo_usuario)
-    db.commit()
-    db.refresh(novo_usuario)
-
-    convite.usado = True
-    db.commit()
-
-    return {"message": "Usuário registrado com sucesso"}
-
-
-# Routers externos
 app.include_router(projection.router)
-app.include_router(router)
-app.include_router(admin_router)
 app.include_router(convites.router)
+app.include_router(integracao_router)
+app.include_router(admin_router)
