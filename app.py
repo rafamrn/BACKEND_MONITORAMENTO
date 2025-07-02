@@ -19,6 +19,7 @@ from clients.isolarcloud_client import ApiSolarCloud
 from clients.huawei_client import ApiHuawei
 from clients.deye_client import ApiDeye
 from models.usina import UsinaModel
+from passlib.hash import bcrypt
 from routers import projection
 from uuid import uuid4
 from pydantic import BaseModel, EmailStr
@@ -335,35 +336,35 @@ def register_with_token(dados: RegistroComConvite, db: Session = Depends(get_db)
     db.commit()
     return {"msg": "Cadastro realizado com sucesso. Agora você pode fazer login."}
 
-@router.post("/register")
-def register_user(data: RegisterRequest, db: Session = Depends(get_db)):
-    if data.password != data.confirmPassword:
-        raise HTTPException(status_code=400, detail="Senhas não coincidem")
-
-    convite = db.query(Convite).filter_by(token=str(data.token)).first()
+@app.post("/register")
+def register_user(request: RegisterRequest, db: Session = Depends(get_db)):
+    convite = db.query(Convite).filter(Convite.token == str(request.token)).first()
 
     if not convite:
-        raise HTTPException(status_code=404, detail="Token de convite inválido")
-    if convite.usado:
-        raise HTTPException(status_code=400, detail="Este token já foi utilizado")
-    if convite.email != data.email:
-        raise HTTPException(status_code=400, detail="O token não corresponde a este email")
+        raise HTTPException(status_code=400, detail="Token inválido ou não encontrado")
 
-    user = db.query(User).filter_by(email=data.email).first()
-    if user:
-        raise HTTPException(status_code=400, detail="Email já registrado")
+    if convite.usado:
+        raise HTTPException(status_code=400, detail="Token já utilizado")
+
+    # Verifica se já existe usuário com esse e-mail (do convite!)
+    existing_user = db.query(User).filter(User.email == convite.email).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="E-mail já registrado")
 
     novo_usuario = User(
-        name=data.name,
-        email=data.email,
-        hashed_password=hash_password(data.password),
-        status="active",
-        payment_status="up-to-date",
-        last_payment=None,
-        created_at=None,
+        name=request.name,
+        email=convite.email,
+        hashed_password=bcrypt.hash(request.password),
+        company=None,
+        plan=None,
+        is_admin=False,
+        created_at=datetime.date.today(),
     )
     db.add(novo_usuario)
-    convite.utilizado = True
+    db.commit()
+    db.refresh(novo_usuario)
+
+    convite.usado = True
     db.commit()
 
     return {"message": "Usuário registrado com sucesso"}
