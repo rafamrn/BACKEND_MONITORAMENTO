@@ -1,6 +1,8 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, constr
 from datetime import datetime, date
 from typing import Optional
+import uuid
+
 
 # Usuário para registro/login
 class UserCreate(BaseModel):
@@ -75,3 +77,10 @@ class ConviteOut(BaseModel):
 class RegistroComConvite(BaseModel):
     password: str
     token: str
+
+class RegisterRequest(BaseModel):
+    name: str
+    email: EmailStr
+    password: constr(min_length=6)
+    confirmPassword: str
+    token: uuid.UUID
