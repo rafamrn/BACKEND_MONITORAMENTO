@@ -9,7 +9,7 @@ from dependencies import get_current_admin_user, get_current_user
 from typing import List, Optional
 from config.settings import settings
 from database import SessionLocal
-from datetime import datetime
+from datetime import datetime, timedelta
 from database import get_db
 from modelos import User, Integracao, Convite
 from esquemas import UserCreate, IntegracaoCreate, IntegracaoOut, ClienteCreate, ClienteOut, RegistroComConvite
@@ -20,6 +20,7 @@ from clients.huawei_client import ApiHuawei
 from clients.deye_client import ApiDeye
 from models.usina import UsinaModel
 from routers import projection
+from uuid import uuid4
 from pydantic import BaseModel, EmailStr
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from routes import convites
@@ -222,6 +223,19 @@ def criar_cliente(cliente: ClienteCreate, db: Session = Depends(get_db)):
     db.add(novo)
     db.commit()
     db.refresh(novo)
+
+    # 🧠 Gera token e salva na tabela convites
+    token = str(uuid4())
+    convite = Convite(
+        email=cliente.email,
+        cliente_id=novo.id,
+        token=token,
+        expiracao=datetime.utcnow() + timedelta(days=7),  # expira em 7 dias
+        usado=False
+    )
+    db.add(convite)
+    db.commit()
+
     return novo
 
 @app.get("/clientes", response_model=List[ClienteOut], response_model_by_alias=False)
