@@ -242,15 +242,7 @@ def criar_cliente(cliente: ClienteCreate, db: Session = Depends(get_db)):
     db.add(convite)
     db.commit()
 
-    return {
-        "mensagem": "Cliente e convite criados com sucesso.",
-        "cliente": {
-            "id": novo.id,
-            "email": novo.email,
-            "name": novo.name,
-        },
-        "token": token
-    }
+    return novo
 
 
 @app.get("/clientes", response_model=List[ClienteOut], response_model_by_alias=False)
