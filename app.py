@@ -10,7 +10,6 @@ from datetime import datetime, timedelta, date
 from typing import List, Optional
 from uuid import uuid4
 import os
-from passlib.hash import bcrypt
 import secrets
 # Internos
 from database import SessionLocal, get_db
@@ -139,19 +138,19 @@ def register_user(request: RegisterRequest, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(novo_usuario)
     return {"message": "Usuário registrado com sucesso"}
+    
 
 # ============== ⬇ CLIENTES ==============
 
 @app.post("/clientes")
 def criar_cliente(cliente: ClienteCreate, db: Session = Depends(get_db)):
-    # Gera valores placeholders obrigatórios
     email_fake = f"{secrets.token_hex(8)}@placeholder.com"
     senha_fake = secrets.token_urlsafe(12)
     hashed = bcrypt.hash(senha_fake)
 
     novo_cliente = User(
         email=email_fake,
-        hashed_password=hashed.decode('utf-8'),
+        hashed_password=hashed,
         name=None,
         company=cliente.company,
         cnpj=cliente.cnpj,
@@ -167,8 +166,7 @@ def criar_cliente(cliente: ClienteCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(novo_cliente)
 
-    # Criação automática de convite
-    token = str(uuid.uuid4())
+    token = str(uuid4())
     convite = Convite(
         email=email_fake,
         token=token,
