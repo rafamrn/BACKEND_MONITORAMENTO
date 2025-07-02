@@ -17,6 +17,7 @@ class IntegracaoCreate(BaseModel):
 class IntegracaoOut(BaseModel):
     id: int
     cliente_id: int
+    nome: Optional[str]
     plataforma: str
     username: str
     senha: str
