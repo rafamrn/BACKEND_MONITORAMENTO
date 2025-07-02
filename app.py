@@ -5,6 +5,7 @@ from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.encoders import jsonable_encoder
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from sqlalchemy.orm import Session
+from dependencies import get_current_admin_user, get_current_user
 from typing import List, Optional
 from config.settings import settings
 from database import SessionLocal
@@ -55,8 +56,6 @@ app.add_middleware(
     TrustedHostMiddleware,
     allowed_hosts=["*"]
 )
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
-
 
 def get_db():
     db = SessionLocal()
@@ -64,31 +63,6 @@ def get_db():
         yield db
     finally:
         db.close()
-
-
-# Dependência: verificar usuário autenticado
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
-    email = decode_access_token(token)
-    if not email:
-        raise HTTPException(status_code=401, detail="Token inválido ou expirado")
-    
-    user = db.query(User).filter(User.email == email).first()
-    if not user:
-        raise HTTPException(status_code=401, detail="Usuário não encontrado")
-    
-    return user
-
-def get_current_admin_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
-    email = decode_access_token(token)
-    if not email:
-        raise HTTPException(status_code=401, detail="Token inválido ou expirado")
-
-    user = db.query(User).filter(User.email == email).first()
-    if not user or not user.is_admin:
-        raise HTTPException(status_code=403, detail="Acesso restrito a administradores.")
-    
-    return user
-
 
 # Rotas
 @app.get("/usina", response_model=List[UsinaModel])

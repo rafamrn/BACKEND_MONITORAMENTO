@@ -1,4 +1,3 @@
-# backend_v2/auth.py
 from jose import jwt, JWTError
 
 SECRET_KEY = "sua_chave_secreta"  # Substitua por uma chave forte e segura
