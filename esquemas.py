@@ -1,10 +1,12 @@
-from pydantic import BaseModel, EmailStr, Field, constr
+from pydantic import BaseModel, EmailStr, constr
 from datetime import datetime, date
 from typing import Optional
 import uuid
 
+# --------------------------
+# 📌 MODELOS DE USUÁRIO
+# --------------------------
 
-# Usuário para registro/login
 class UserCreate(BaseModel):
     name: Optional[str]
     email: EmailStr
@@ -14,60 +16,9 @@ class UserCreate(BaseModel):
     telefone: Optional[str]
     plan: Optional[str]
 
-# Integrações
-class IntegracaoCreate(BaseModel):
-    plataforma: str
-    username: str
-    senha: str
-
-
-class IntegracaoOut(BaseModel):
-    id: int
-    cliente_id: Optional[int] = None
-    plataforma: str
-    username: str
-    senha: str
-    appkey: Optional[str] = None
-    x_access_key: Optional[str] = None
-
-    # Novo campo: nome do cliente via relação
-    nome: Optional[str] = None
-
-    class Config:
-        from_attributes = True
-
-
-# Cadastro de clientes (herda de UserCreate se preferir)
-class ClienteCreate(BaseModel):
-    name: str
-    email: EmailStr
-    password: str
-    company: Optional[str] = None
-    plan: Optional[str] = None
-    status: str = "active"
-    payment_status: str = "up-to-date"
-    last_payment: Optional[date] = None
-    created_at: Optional[date] = None
-
-class ClienteOut(BaseModel):
-    id: int
-    email: str
-    name: Optional[str]
-    company: Optional[str]
-    cnpj: Optional[str]
-    telefone: Optional[str]
-    plan: Optional[str]
-    status: Optional[str]
-    payment_status: Optional[str]
-    last_payment: Optional[datetime.date]
-    created_at: Optional[datetime.date]
-
-    class Config:
-        from_attributes = True
-
-    class Config:
-        from_attributes = True
-        validate_by_name = True
+# --------------------------
+# 📌 MODELOS DE CLIENTE
+# --------------------------
 
 class ClienteCreate(BaseModel):
     email: EmailStr
@@ -79,8 +30,50 @@ class ClienteCreate(BaseModel):
     plan: str
     status: str
     payment_status: str
-    last_payment: datetime.date
-    created_at: datetime.date
+    last_payment: date
+    created_at: date
+
+class ClienteOut(BaseModel):
+    id: int
+    email: str
+    name: Optional[str]
+    company: Optional[str]
+    cnpj: Optional[str]
+    telefone: Optional[str]
+    plan: Optional[str]
+    status: Optional[str]
+    payment_status: Optional[str]
+    last_payment: Optional[date]
+    created_at: Optional[date]
+
+    class Config:
+        from_attributes = True
+
+# --------------------------
+# 📌 MODELOS DE INTEGRAÇÃO
+# --------------------------
+
+class IntegracaoCreate(BaseModel):
+    plataforma: str
+    username: str
+    senha: str
+
+class IntegracaoOut(BaseModel):
+    id: int
+    cliente_id: Optional[int] = None
+    plataforma: str
+    username: str
+    senha: str
+    appkey: Optional[str] = None
+    x_access_key: Optional[str] = None
+    nome: Optional[str] = None  # nome do cliente via relação
+
+    class Config:
+        from_attributes = True
+
+# --------------------------
+# 📌 MODELOS DE CONVITE
+# --------------------------
 
 class ConviteOut(BaseModel):
     id: int
@@ -92,6 +85,10 @@ class ConviteOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+# --------------------------
+# 📌 REGISTRO COM CONVITE
+# --------------------------
 
 class RegistroComConvite(BaseModel):
     password: str
