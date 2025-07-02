@@ -34,7 +34,7 @@ class IntegracaoOut(BaseModel):
     nome: Optional[str] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 # Cadastro de clientes (herda de UserCreate se preferir)
@@ -63,7 +63,7 @@ class ClienteOut(BaseModel):
     created_at: Optional[datetime.date]
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
     class Config:
         from_attributes = True
@@ -91,7 +91,7 @@ class ConviteOut(BaseModel):
     criado_em: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class RegistroComConvite(BaseModel):
     password: str
