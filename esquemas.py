@@ -17,17 +17,18 @@ class IntegracaoCreate(BaseModel):
 class IntegracaoOut(BaseModel):
     id: int
     cliente_id: int
-    nome: Optional[str]
     plataforma: str
     username: str
     senha: str
-    status: str = "active"
-    ultima_sincronizacao: Optional[datetime] = None
     appkey: Optional[str] = None
     x_access_key: Optional[str] = None
 
+    # Novo campo: nome do cliente via relação
+    nome: Optional[str] = None
+
     class Config:
         orm_mode = True
+
 
 # Cadastro de clientes (herda de UserCreate se preferir)
 class ClienteCreate(BaseModel):

@@ -2,6 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException, status, Query, APIRouter
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
+from fastapi.encoders import jsonable_encoder
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -280,9 +281,14 @@ def listar_todas_integracoes(
     usuario_logado: User = Depends(get_current_admin_user)
 ):
     integracoes = db.query(Integracao).all()
+    
+    resultado = []
     for i in integracoes:
-        print(f"🧪 Integração ID: {i.id}, Nome: {i.nome}")
-    return integracoes
+        integracao_dict = jsonable_encoder(i)
+        integracao_dict["nome"] = i.cliente.name if i.cliente else None
+        resultado.append(integracao_dict)
+    
+    return resultado
 
 @admin_router.put("/integracoes/{id}")
 def atualizar_chaves_integracao(
