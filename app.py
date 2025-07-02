@@ -121,22 +121,21 @@ def register_user(request: RegisterRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Token já utilizado")
     if convite.expiracao < datetime.utcnow():
         raise HTTPException(status_code=400, detail="Token expirado")
-    if db.query(User).filter(User.email == convite.email).first():
-        raise HTTPException(status_code=400, detail="E-mail já registrado")
 
-    novo_usuario = User(
-        name=request.name.strip(),
-        email=convite.email,
-        hashed_password=bcrypt.hash(request.password),
-        company=None,
-        plan=None,
-        is_admin=False,
-        created_at=date.today(),
-    )
-    db.add(novo_usuario)
+    # Encontra o usuário já criado com email do convite
+    user = db.query(User).filter(User.email == convite.email).first()
+    if not user:
+        raise HTTPException(status_code=400, detail="Usuário não encontrado para este convite")
+
+    # Atualiza os dados do usuário criado via /clientes
+    user.name = request.name.strip()
+    user.hashed_password = bcrypt.hash(request.password)
+    user.email = request.email.strip()  # Novo e-mail real do cliente
+
     convite.usado = True
     db.commit()
-    db.refresh(novo_usuario)
+    db.refresh(user)
+
     return {"message": "Usuário registrado com sucesso"}
     
 
