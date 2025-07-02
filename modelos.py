@@ -13,6 +13,8 @@ class User(Base):
 
     name = Column(String, nullable=True)
     company = Column(String, nullable=True)
+    cnpj = Column(String, nullable=True)
+    telefone = Column(String, nullable=True)
     plan = Column(String, nullable=True)
     status = Column(String, default="active")
     payment_status = Column(String, default="up-to-date")

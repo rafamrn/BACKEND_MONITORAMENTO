@@ -6,8 +6,13 @@ import uuid
 
 # Usuário para registro/login
 class UserCreate(BaseModel):
+    name: Optional[str]
     email: EmailStr
     password: str
+    company: Optional[str]
+    cnpj: Optional[str]
+    telefone: Optional[str]
+    plan: Optional[str]
 
 # Integrações
 class IntegracaoCreate(BaseModel):
@@ -59,9 +64,12 @@ class ClienteOut(BaseModel):
         from_attributes = True
         validate_by_name = True
 
-class ConviteCreate(BaseModel):
-    email: EmailStr
-    cliente_id: int
+class ClienteCreate(BaseModel):
+    name: str
+    company: str
+    cnpj: Optional[str]
+    telefone: Optional[str]
+    plan: str
 
 class ConviteOut(BaseModel):
     id: int
