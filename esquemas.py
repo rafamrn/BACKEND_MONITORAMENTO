@@ -89,6 +89,7 @@ class RegistroComConvite(BaseModel):
 
 class RegisterRequest(BaseModel):
     name: str
+    email: EmailStr
     password: constr(min_length=6)
     confirmPassword: str
     token: uuid.UUID
