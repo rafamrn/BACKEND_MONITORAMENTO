@@ -10,6 +10,7 @@ from datetime import datetime, timedelta, date
 from typing import List, Optional
 from uuid import uuid4
 import os
+from passlib.hash import bcrypt
 
 # Internos
 from database import SessionLocal, get_db
@@ -143,40 +144,29 @@ def register_user(request: RegisterRequest, db: Session = Depends(get_db)):
 
 @app.post("/clientes")
 def criar_cliente(cliente: ClienteCreate, db: Session = Depends(get_db)):
-    novo = User(
-    email=None,  # será preenchido depois
-    hashed_password=hash_password("senha_temporaria"),  # ← solução provisória
-    name=None,
-    company=cliente.company,
-    cnpj=cliente.cnpj,
-    telefone=cliente.telefone,
-    plan=cliente.plan,
-    status="active",
-    payment_status="up-to-date",
-    last_payment=datetime.date.today(),
-    created_at=datetime.date.today(),
-    is_admin=False,
-)
+    # Gera valores placeholders obrigatórios
+    email_fake = f"{secrets.token_hex(8)}@placeholder.com"
+    senha_fake = secrets.token_urlsafe(12)
+    hashed = bcrypt.hash(senha_fake)
 
-    db.add(novo)
-    db.commit()
-    db.refresh(novo)
-
-    # Gera um token de convite para o cliente completar o cadastro depois
-    token = str(uuid4())
-    expiracao = datetime.utcnow() + timedelta(days=7)
-
-    convite = Convite(
-        email="",  # deixamos vazio ou usamos um placeholder
-        token=token,
-        cliente_id=novo.id,
-        expiracao=expiracao
+    novo_cliente = User(
+        email=email_fake,
+        hashed_password=hashed,
+        name=None,
+        company=cliente.company,
+        cnpj=cliente.cnpj,
+        telefone=cliente.telefone,
+        plan=cliente.plan,
+        status="active",
+        payment_status="up-to-date",
+        created_at=date.today(),
+        last_payment=date.today(),
+        is_admin=False,
     )
-
-    db.add(convite)
+    db.add(novo_cliente)
     db.commit()
-
-    return {"message": "Cliente criado com sucesso", "token": token}
+    db.refresh(novo_cliente)
+    return {"message": "Cliente criado com sucesso", "id": novo_cliente.id}
 
 
 @app.get("/clientes", response_model=List[ClienteOut])
