@@ -147,11 +147,11 @@ def criar_cliente(cliente: ClienteCreate, db: Session = Depends(get_db)):
     # Gera valores placeholders obrigatórios
     email_fake = f"{secrets.token_hex(8)}@placeholder.com"
     senha_fake = secrets.token_urlsafe(12)
-    hashed = bcrypt.hash(senha_fake)
+    hashed = bcrypt.hashpw(senha_fake.encode('utf-8'), bcrypt.gensalt())
 
     novo_cliente = User(
         email=email_fake,
-        hashed_password=hashed,
+        hashed_password=hashed.decode('utf-8'),
         name=None,
         company=cliente.company,
         cnpj=cliente.cnpj,
@@ -166,8 +166,25 @@ def criar_cliente(cliente: ClienteCreate, db: Session = Depends(get_db)):
     db.add(novo_cliente)
     db.commit()
     db.refresh(novo_cliente)
-    return {"message": "Cliente criado com sucesso", "id": novo_cliente.id}
 
+    # Criação automática de convite
+    token = str(uuid.uuid4())
+    convite = Convite(
+        email=email_fake,
+        token=token,
+        cliente_id=novo_cliente.id,
+        usado=False,
+        expiracao=datetime.utcnow() + timedelta(days=7),
+        criado_em=datetime.utcnow(),
+    )
+    db.add(convite)
+    db.commit()
+
+    return {
+        "message": "Cliente criado com sucesso",
+        "id": novo_cliente.id,
+        "token": token
+    }
 
 @app.get("/clientes", response_model=List[ClienteOut])
 def listar_clientes(db: Session = Depends(get_db)):
