@@ -279,7 +279,10 @@ def listar_todas_integracoes(
     db: Session = Depends(get_db), 
     usuario_logado: User = Depends(get_current_admin_user)
 ):
-    return db.query(Integracao).all()
+    integracoes = db.query(Integracao).all()
+    for i in integracoes:
+        print(f"🧪 Integração ID: {i.id}, Nome: {i.nome}")
+    return integracoes
 
 @admin_router.put("/integracoes/{id}")
 def atualizar_chaves_integracao(
