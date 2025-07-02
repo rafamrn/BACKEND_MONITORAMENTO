@@ -203,6 +203,7 @@ def criar_integracao(
         plataforma=integracao.plataforma,
         username=integracao.username,
         senha=integracao.senha,
+        nome=user.name
     )
     db.add(nova)
     db.commit()
