@@ -73,8 +73,7 @@ class ApiSolarCloud:
 
 
     def _post_with_auth(self, url, body):
-        if not self.token:
-            self._login()
+        self._login()  # ← já garante token válido
 
         body["token"] = self.token
         response = self.session.post(url, json=body, headers=self.headers)
@@ -87,20 +86,12 @@ class ApiSolarCloud:
 
         return response
 
-
     def get_usinas(self):
-        if not self.usinas_cache:
-            self.get_usinas()
-
-        # ⛔️ Aqui pode estar o problema:
-        if not self.usinas_cache:
-            print("⚠️ Nenhuma usina encontrada após tentativa de atualização.")
-            return {"diario": [], "setedias": [], "mensal": {"total": 0.0, "por_usina": []}}
-
-
-        # Expira cache após 10 minutos (300 segundos)
+        # Se cache ainda válido (até 5 min)
         if self.usinas_cache and (time.time() - getattr(self, "usinas_timestamp", 0)) < 300:
             return self.usinas_cache
+
+        self._login()  # garante token válido
 
         url = self.base_url + "getPowerStationList"
         body = {
@@ -113,48 +104,56 @@ class ApiSolarCloud:
         response = self._post_with_auth(url, body)
         if response.status_code != 200:
             print("Erro ao buscar usinas:", response.status_code, response.text)
+            self.usinas_cache = []  # ← evita None
             return []
-
-        dados = response.json()
-        dados_usinas = []
 
         try:
-            for usina in dados["result_data"]["pageList"]:
-                ps_fault_status = usina.get("ps_fault_status", None)
-
-                curr_power_raw = usina.get("curr_power", {}).get("value", "0")
-                today_energy_raw = usina.get("today_energy", {}).get("value", "0")
-
-                try:
-                    curr_power_str = str(curr_power_raw).replace(".", "")
-                    curr_power_float = float(curr_power_str)
-                except (ValueError, TypeError):
-                    curr_power_float = 0
-
-                dados_usinas.append({
-                    "ps_id": usina.get("ps_id"),
-                    "ps_name": usina.get("ps_name"),
-                    "location": usina.get("ps_location"),
-                    "capacidade": usina.get("total_capcity", {}).get("value", "0"),
-                    "curr_power": curr_power_float,
-                    "total_energy": usina.get("total_energy", {}).get("value", "0"),
-                    "today_energy": parse_float(today_energy_raw),
-                    "co2_total": usina.get("co2_reduce_total", {}).get("value"),
-                    "income_total": usina.get("total_income", {}).get("value"),
-                    "ps_fault_status": ps_fault_status
-                })
-
-        except KeyError as e:
+            dados = response.json()
+            page_list = dados["result_data"]["pageList"]
+        except Exception as e:
             print("Erro ao acessar dados da resposta:", e)
-            self.usinas_cache = []  # ← adicione isso
+            self.usinas_cache = []
             return []
 
-        # Salva no cache com timestamp
-        self.usinas_cache = dados_usinas
-        self.usinas_timestamp = time.time()
+        dados_usinas = []
+        for usina in page_list:
 
-        return dados_usinas
+            try:
+                for usina in dados["result_data"]["pageList"]:
+                    ps_fault_status = usina.get("ps_fault_status", None)
 
+                    curr_power_raw = usina.get("curr_power", {}).get("value", "0")
+                    today_energy_raw = usina.get("today_energy", {}).get("value", "0")
+
+                    try:
+                        curr_power_str = str(curr_power_raw).replace(".", "")
+                        curr_power_float = float(curr_power_str)
+                    except (ValueError, TypeError):
+                        curr_power_float = 0
+
+                    dados_usinas.append({
+                        "ps_id": usina.get("ps_id"),
+                        "ps_name": usina.get("ps_name"),
+                        "location": usina.get("ps_location"),
+                        "capacidade": usina.get("total_capcity", {}).get("value", "0"),
+                        "curr_power": curr_power_float,
+                        "total_energy": usina.get("total_energy", {}).get("value", "0"),
+                        "today_energy": parse_float(today_energy_raw),
+                        "co2_total": usina.get("co2_reduce_total", {}).get("value"),
+                        "income_total": usina.get("total_income", {}).get("value"),
+                        "ps_fault_status": ps_fault_status
+                    })
+
+            except KeyError as e:
+                print("Erro ao acessar dados da resposta:", e)
+                self.usinas_cache = []  # ← adicione isso
+                return []
+
+            # Salva no cache com timestamp
+            self.usinas_cache = dados_usinas
+            self.usinas_timestamp = time.time()
+            return dados_usinas
+        
 # OBTENDO PS_KEYS E SERIAL NUMBER E DEMAIS DADOS
     
 
@@ -163,11 +162,15 @@ class ApiSolarCloud:
         brasil = timezone("America/Sao_Paulo")
         agora = datetime.now(brasil)
 
-        if not self.token:
-            self._login()
+        self._login()
 
         if not self.usinas_cache:
             self.get_usinas()
+
+        if not self.usinas_cache:
+            print("⚠️ Nenhuma usina carregada. Retornando vazio.")
+            return {"diario": [], "setedias": [], "mensal": {"total": 0.0, "por_usina": []}}
+
 
         # Se chamada específica por dia + usina
         if period == "day" and date and plant_id:
@@ -297,8 +300,7 @@ class ApiSolarCloud:
         brasil = timezone("America/Sao_Paulo")
         data_dt = datetime.strptime(data, "%Y-%m-%d").replace(tzinfo=brasil)
 
-        if not self.token:
-            self._login()
+        self._login()
 
         if not self.usinas_cache:
             self.get_usinas()
@@ -399,8 +401,7 @@ class ApiSolarCloud:
     def get_geracao_mes(self, data: str, ps_key: str = None, plant_id: int = None):
         from calendar import monthrange
 
-        if not self.token:
-            self._login()
+        self._login()
 
         if not self.usinas_cache:
             self.get_usinas()
@@ -500,8 +501,7 @@ class ApiSolarCloud:
 
     
     def get_geracao_ano(self, ano: str, ps_key: str = None, plant_id: int = None):
-        if not self.token:
-            self._login()
+        self._login()
 
         if not self.usinas_cache:
             self.get_usinas()
@@ -575,8 +575,7 @@ class ApiSolarCloud:
 
     def get_dados_tecnicos(self, ps_key: str = None, plant_id: int = 1563706):
         # Atualiza o token se expirado
-        if not self.token:
-            self._login()
+        self._login()
 
         # Se ps_key não for fornecido, obtém todos os da usina
         if not ps_key:
