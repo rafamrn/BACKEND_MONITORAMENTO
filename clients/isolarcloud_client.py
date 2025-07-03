@@ -9,6 +9,7 @@ from calendar import monthrange
 from models .codificacoes_sungrow import ponto_legivel
 from collections import defaultdict
 
+_token_cache_por_cliente = {}
 
 class ApiSolarCloud:
     base_url = "https://gateway.isolarcloud.com.hk/openapi/"
@@ -36,7 +37,12 @@ class ApiSolarCloud:
         self.geracao30_cache = None
 
     def _login(self):
-        if self.token and self.token_timestamp and time.time() - self.token_timestamp < 3600:
+        now = time.time()
+        cache = _token_cache_por_cliente.get(self.username)
+
+        if cache and now - cache["timestamp"] < 3600:
+            self.token = cache["token"]
+            self.token_timestamp = cache["timestamp"]
             return self.token
 
         url = self.base_url + "login"
@@ -49,18 +55,25 @@ class ApiSolarCloud:
         if response.status_code != 200:
             print("Erro no login:", response.status_code, response.text)
             return None
+
         dados = response.json()
         try:
             self.token = dados["result_data"]["token"]
-            self.token_timestamp = time.time()
+            self.token_timestamp = now
+            _token_cache_por_cliente[self.username] = {
+                "token": self.token,
+                "timestamp": now
+            }
         except KeyError:
             print("Token não encontrado na resposta:", dados)
             return None
+
         print("✅ Novo token SUNGROW obtido:", self.token)
         return self.token
 
+
     def _post_with_auth(self, url, body):
-        if not self.token or not self.token_timestamp or time.time() - self.token_timestamp > 3600:
+        if not self.token:
             self._login()
 
         body["token"] = self.token
@@ -142,7 +155,7 @@ class ApiSolarCloud:
         brasil = timezone("America/Sao_Paulo")
         agora = datetime.now(brasil)
 
-        if not self.token or not self.token_timestamp or time.time() - self.token_timestamp > 3600:
+        if not self.token:
             self._login()
 
         if not self.usinas_cache:
@@ -276,7 +289,7 @@ class ApiSolarCloud:
         brasil = timezone("America/Sao_Paulo")
         data_dt = datetime.strptime(data, "%Y-%m-%d").replace(tzinfo=brasil)
 
-        if not self.token or not self.token_timestamp or time.time() - self.token_timestamp > 3600:
+        if not self.token:
             self._login()
 
         if not self.usinas_cache:
@@ -378,8 +391,8 @@ class ApiSolarCloud:
     def get_geracao_mes(self, data: str, ps_key: str = None, plant_id: int = None):
         from calendar import monthrange
 
-        if not self.token or not self.token_timestamp or time.time() - self.token_timestamp > 3600:
-            self.login_solarcloud()
+        if not self.token:
+            self._login()
 
         if not self.usinas_cache:
             self.get_usinas()
@@ -479,8 +492,8 @@ class ApiSolarCloud:
 
     
     def get_geracao_ano(self, ano: str, ps_key: str = None, plant_id: int = None):
-        if not self.token or not self.token_timestamp or time.time() - self.token_timestamp > 3600 or time.time() - self.token_timestamp > 600:
-            self.login_solarcloud()
+        if not self.token:
+            self._login()
 
         if not self.usinas_cache:
             self.get_usinas()
@@ -554,8 +567,8 @@ class ApiSolarCloud:
 
     def get_dados_tecnicos(self, ps_key: str = None, plant_id: int = 1563706):
         # Atualiza o token se expirado
-        if not self.token or not self.token_timestamp or time.time() - self.token_timestamp > 3600:
-            self.login_solarcloud()
+        if not self.token:
+            self._login()
 
         # Se ps_key não for fornecido, obtém todos os da usina
         if not ps_key:
