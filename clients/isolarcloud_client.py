@@ -89,7 +89,14 @@ class ApiSolarCloud:
 
 
     def get_usinas(self):
-        import time  # garante que time está disponível
+        if not self.usinas_cache:
+            self.get_usinas()
+
+        # ⛔️ Aqui pode estar o problema:
+        if not self.usinas_cache:
+            print("⚠️ Nenhuma usina encontrada após tentativa de atualização.")
+            return {"diario": [], "setedias": [], "mensal": {"total": 0.0, "por_usina": []}}
+
 
         # Expira cache após 10 minutos (300 segundos)
         if self.usinas_cache and (time.time() - getattr(self, "usinas_timestamp", 0)) < 300:
@@ -139,6 +146,7 @@ class ApiSolarCloud:
 
         except KeyError as e:
             print("Erro ao acessar dados da resposta:", e)
+            self.usinas_cache = []  # ← adicione isso
             return []
 
         # Salva no cache com timestamp
