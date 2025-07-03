@@ -1,60 +1,58 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+
 from database import get_db
 from modelos import User
 from dependencies import get_current_user
-from integracoes.solarcloud_service import get_api_instance
+from integracoes.solarcloud_service import get_api_instance as get_solarcloud_instance
+from integracoes.deye_service import get_api_instance as get_deye_instance
+from utils import agrupar_usinas_por_nome
+from services.performance_service import (
+    get_performance_diaria,
+    get_performance_7dias,
+    get_performance_30dias,
+)
 
-router = APIRouter(prefix="/solarcloud", tags=["Sungrow / iSolarCloud"])
+router = APIRouter(tags=["Sungrow / iSolarCloud", "Deye"])
 
+# 🔹 Listar usinas do cliente logado
 @router.get("/usinas")
 def listar_usinas(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    api = get_api_instance(db, current_user.id)
-    return api.get_usinas()
+    solarcloud = get_solarcloud_instance(db, current_user.id)
+    deye = get_deye_instance(db, current_user.id)
 
+    usinas = solarcloud.get_usinas() + deye.get_usinas()
+    return agrupar_usinas_por_nome(usinas)
 
-@router.get("/geracao")
-def obter_geracao(
-    period: str = Query(..., regex="^(day|month|year)$"),
-    date: str = Query(...),
-    plant_id: int = Query(...),
+# 🔹 Performance diária
+@router.get("/performance_diaria")
+def performance_diaria(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    api = get_api_instance(db, current_user.id)
-    return api.get_geracao(period=period, date=date, plant_id=plant_id)
+    solarcloud = get_solarcloud_instance(db, current_user.id)
+    deye = get_deye_instance(db, current_user.id)
+    return get_performance_diaria(solarcloud, deye, db)
 
-
-@router.get("/geracao/mensal")
-def obter_geracao_mensal(
-    date: str = Query(..., regex=r"^\d{4}-\d{2}$"),  # ex: 2025-07
-    plant_id: int = Query(...),
+# 🔹 Performance 7 dias
+@router.get("/performance_7dias")
+def performance_7dias(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    api = get_api_instance(db, current_user.id)
-    return api.get_geracao_mes(data=date, plant_id=plant_id)
+    solarcloud = get_solarcloud_instance(db, current_user.id)
+    deye = get_deye_instance(db, current_user.id)
+    return get_performance_7dias(solarcloud, deye, db)
 
-
-@router.get("/geracao/anual")
-def obter_geracao_anual(
-    year: str = Query(..., regex=r"^\d{4}$"),  # ex: 2025
-    plant_id: int = Query(...),
+# 🔹 Performance 30 dias
+@router.get("/performance_30dias")
+def performance_30dias(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    api = get_api_instance(db, current_user.id)
-    return api.get_geracao_ano(ano=year, plant_id=plant_id)
-
-
-@router.get("/dados-tecnicos")
-def obter_dados_tecnicos(
-    plant_id: int = Query(...),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    api = get_api_instance(db, current_user.id)
-    return api.get_dados_tecnicos(plant_id=plant_id)
+    solarcloud = get_solarcloud_instance(db, current_user.id)
+    deye = get_deye_instance(db, current_user.id)
+    return get_performance_30dias(solarcloud, deye, db)
