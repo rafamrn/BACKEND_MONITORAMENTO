@@ -26,19 +26,18 @@ class ApiSolarCloud:
 
         self.token = None
         self.token_timestamp = None
-        self.token_duration = 3600  # 1h de validade estimada
-
         self.usinas_cache = None
         self.usinas_timestamp = None
-
+        self.session = requests.Session()
         self._geracao_cache = None
         self._geracao_cache_timestamp = None
         self.geracao7_cache = None
         self.geracao30_cache = None
 
-        self.session = requests.Session()
-
     def _login(self):
+        if self.token and self.token_timestamp and time.time() - self.token_timestamp < 3600:
+            return self.token
+
         url = self.base_url + "login"
         body = {
             "appkey": self.appkey,
@@ -53,26 +52,23 @@ class ApiSolarCloud:
         try:
             self.token = dados["result_data"]["token"]
             self.token_timestamp = time.time()
-            print("✅ Novo token SUNGROW obtido:", self.token)
         except KeyError:
             print("Token não encontrado na resposta:", dados)
             return None
-
-    def _get_token(self):
-        if not self.token or (time.time() - self.token_timestamp > self.token_duration):
-            self._login()
+        print("✅ Novo token SUNGROW obtido:", self.token)
         return self.token
 
     def _post_with_auth(self, url, body):
-        token = self._get_token()
-        body["token"] = token
+        if not self.token or not self.token_timestamp or time.time() - self.token_timestamp > 3600:
+            self._login()
+
+        body["token"] = self.token
         response = self.session.post(url, json=body, headers=self.headers)
 
-        if response.status_code in (401, 403):  # token expirado
+        if response.status_code in (401, 403):
             print("Token expirado ou inválido. Renovando...")
-            self.token = None
-            token = self._get_token()
-            body["token"] = token
+            self._login()
+            body["token"] = self.token
             response = self.session.post(url, json=body, headers=self.headers)
 
         return response
