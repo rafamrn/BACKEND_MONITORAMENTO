@@ -19,6 +19,7 @@ from esquemas import (
     RegistroComConvite, RegisterRequest
 )
 from utils import agrupar_usinas_por_nome, hash_password, verify_password
+from integracoes.solarcloud_service import get_api_instance
 from auth import create_access_token, decode_access_token
 from dependencies import get_current_admin_user, get_current_user
 from config.settings import settings
@@ -71,16 +72,28 @@ def listar_geracoes_diarias():
     return isolarcloud.get_geracao() + deye.get_geracao()
 
 @app.get("/performance_diaria")
-def performance_diaria(db: Session = Depends(get_db)):
-    return get_performance_diaria(isolarcloud, deye, db)
+def performance_diaria(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    api_solarcloud = get_api_instance(db, current_user.id)
+    return get_performance_diaria(api_solarcloud, db)
 
 @app.get("/performance_7dias")
-def performance_7dias(db: Session = Depends(get_db)):
-    return get_performance_7dias(isolarcloud, deye, db)
+def performance_7dias(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    api_solarcloud = get_api_instance(db, current_user.id)
+    return get_performance_7dias(api_solarcloud, db)
 
 @app.get("/performance_30dias")
-def performance_30dias(db: Session = Depends(get_db)):
-    return get_performance_30dias(isolarcloud, deye, db)
+def performance_30dias(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    api_solarcloud = get_api_instance(db, current_user.id)
+    return get_performance_30dias(api_solarcloud, db)
 
 @app.get("/dados_tecnicos")
 def obter_dados_tecnicos(plant_id: int = Query(...), usuario_logado: User = Depends(get_current_user)):
