@@ -17,9 +17,6 @@ class ApiSolarCloud:
         self.password = password
         self.appkey = appkey
         self.x_access_key = x_access_key
-        self.token = None
-        self.token_timestamp = None
-        self.token_duration = 3600  # token válido por 1h
 
         self.headers = {
             "Content-Type": "application/json",
@@ -28,15 +25,18 @@ class ApiSolarCloud:
         }
 
         self.token = None
-        self.usinas_cache = None
-        self.token_cache = None
         self.token_timestamp = None
+        self.token_duration = 3600  # 1h de validade estimada
+
+        self.usinas_cache = None
         self.usinas_timestamp = None
-        self.session = requests.Session()
+
         self._geracao_cache = None
         self._geracao_cache_timestamp = None
         self.geracao7_cache = None
-        
+        self.geracao30_cache = None
+
+        self.session = requests.Session()
 
     def _login(self):
         url = self.base_url + "login"
@@ -62,7 +62,7 @@ class ApiSolarCloud:
         if not self.token or (time.time() - self.token_timestamp > self.token_duration):
             self._login()
         return self.token
-    
+
     def _post_with_auth(self, url, body):
         token = self._get_token()
         body["token"] = token
@@ -76,6 +76,7 @@ class ApiSolarCloud:
             response = self.session.post(url, json=body, headers=self.headers)
 
         return response
+
 
     def get_usinas(self):
         import time  # garante que time está disponível
