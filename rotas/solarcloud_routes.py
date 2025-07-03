@@ -22,9 +22,17 @@ def listar_usinas(
     current_user: User = Depends(get_current_user),
 ):
     solarcloud = get_solarcloud_instance(db, current_user.id)
-    deye = get_deye_instance(db, current_user.id)
+    try:
+        deye = get_deye_instance(db, current_user.id)
+    except HTTPException:
+        deye = None
 
-    usinas = solarcloud.get_usinas() + deye.get_usinas()
+    usinas = []
+    if solarcloud:
+        usinas.extend(solarcloud.get_usinas())
+    if deye:
+        usinas.extend(deye.get_usinas())
+
     return agrupar_usinas_por_nome(usinas)
 
 # 🔹 Performance diária
@@ -34,8 +42,12 @@ def route_performance_diaria(
     current_user: User = Depends(get_current_user),
 ):
     solarcloud = get_solarcloud_instance(db, current_user.id)
-    deye = get_deye_instance(db, current_user.id)
-    return get_performance_diaria(solarcloud, deye, db)
+    try:
+        deye = get_deye_instance(db, current_user.id)
+    except HTTPException:
+        deye = None
+
+    return get_performance_diaria(solarcloud, deye, db, current_user.id)
 
 # 🔹 Performance últimos 7 dias
 @router.get("/performance_7dias")
@@ -44,8 +56,12 @@ def route_performance_7dias(
     current_user: User = Depends(get_current_user),
 ):
     solarcloud = get_solarcloud_instance(db, current_user.id)
-    deye = get_deye_instance(db, current_user.id)
-    return get_performance_7dias(solarcloud, deye, db)
+    try:
+        deye = get_deye_instance(db, current_user.id)
+    except HTTPException:
+        deye = None
+
+    return get_performance_7dias(solarcloud, deye, db, current_user.id)
 
 # 🔹 Performance últimos 30 dias
 @router.get("/performance_30dias")
@@ -54,5 +70,9 @@ def route_performance_30dias(
     current_user: User = Depends(get_current_user),
 ):
     solarcloud = get_solarcloud_instance(db, current_user.id)
-    deye = get_deye_instance(db, current_user.id)
-    return get_performance_30dias(solarcloud, deye, db)
+    try:
+        deye = get_deye_instance(db, current_user.id)
+    except HTTPException:
+        deye = None
+
+    return get_performance_30dias(solarcloud, deye, db, current_user.id)
