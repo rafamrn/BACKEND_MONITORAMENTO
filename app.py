@@ -31,6 +31,7 @@ from clients.huawei_client import ApiHuawei
 from clients.deye_client import ApiDeye
 from routers import projection
 from routes import convites
+from rotas import solarcloud_routes
 from passlib.hash import bcrypt
 
 # ============== ⬇ APP ==============
@@ -248,3 +249,5 @@ app.include_router(projection.router)
 app.include_router(convites.router)
 app.include_router(integracao_router)
 app.include_router(admin_router)
+app.include_router(solarcloud_routes.router)
+

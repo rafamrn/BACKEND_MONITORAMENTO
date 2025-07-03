@@ -11,16 +11,19 @@ from models .codificacoes_sungrow import ponto_legivel
 
 class ApiSolarCloud:
     base_url = "https://gateway.isolarcloud.com.hk/openapi/"
-    appkey = "03A0E186C87230B4DE9E028F90491A58"
-    headers = {
-        "Content-Type": "application/json",
-        "x-access-key": "4ey7zficrz2np518aqku2a8997ha1ebz",
-        "sys_code": "901"
-    }
 
-    def __init__(self, username, password):
+    def __init__(self, username, password, x_access_key=None, appkey=None):
         self.username = username
         self.password = password
+        self.appkey = appkey
+        self.x_access_key = x_access_key
+
+        self.headers = {
+            "Content-Type": "application/json",
+            "x-access-key": self.x_access_key,
+            "sys_code": "901"
+        }
+
         self.token = None
         self.usinas_cache = None
         self.token_cache = None
