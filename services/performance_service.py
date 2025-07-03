@@ -2,6 +2,8 @@ from sqlalchemy.orm import Session
 from models.monthly_projection import MonthlyProjection
 from datetime import datetime, timedelta
 import calendar
+from functools import lru_cache
+from clients.isolarcloud_client import ApiSolarCloud
 
 # 🔒 Cache por cliente
 _performance_diaria_cache = {}
@@ -10,6 +12,11 @@ _performance_7dias_cache = {}
 _performance_7dias_cache_timestamp = {}
 _performance_30dias_cache = {}
 _performance_30dias_cache_timestamp = {}
+
+# 🔁 Instância com cache da API SolarCloud
+@lru_cache(maxsize=32)
+def get_solarcloud_instance(username, password, appkey, x_access_key):
+    return ApiSolarCloud(username, password, appkey=appkey, x_access_key=x_access_key)
 
 # 📊 Performance diária
 def calcular_performance_diaria(plant_id: int, energia_gerada: float, db: Session):
