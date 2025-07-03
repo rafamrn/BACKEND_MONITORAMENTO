@@ -183,7 +183,7 @@ class ApiSolarCloud:
             url_device_list = self.base_url + "getDeviceList"
             body_device = {
                 "appkey": self.appkey,
-                "token": self.token_cache,
+                "token": self.token,
                 "curPage": 1,
                 "size": 100,
                 "ps_id": ps_id,
@@ -209,7 +209,7 @@ class ApiSolarCloud:
                 def get_energia(start, end):
                     body = {
                         "appkey": self.appkey,
-                        "token": self.token_cache,
+                        "token": self.token,
                         "data_point": "p1",
                         "end_time": end,
                         "query_type": "1",
@@ -286,7 +286,7 @@ class ApiSolarCloud:
         url = self.base_url + "getDeviceList"
         body_device = {
             "appkey": self.appkey,
-            "token": self.token_cache,
+            "token": self.token,
             "curPage": 1,
             "size": 100,
             "ps_id": ps_id,
@@ -320,7 +320,7 @@ class ApiSolarCloud:
 
                 body = {
                     "appkey": self.appkey,
-                    "token": self.token_cache,
+                    "token": self.token,
                     "start_time_stamp": start_str,
                     "end_time_stamp": end_str,
                     "minute_interval": 5,
@@ -387,7 +387,7 @@ class ApiSolarCloud:
         url = self.base_url + "getDeviceList"
         body_dispositivos = {
             "appkey": self.appkey,
-            "token": self.token_cache,
+            "token": self.token,
             "curPage": 1,
             "size": 100,
             "ps_id": str(plant_id),
@@ -424,7 +424,7 @@ class ApiSolarCloud:
 
         for key in ps_keys:
             body_energy = {
-                "token": self.token_cache,
+                "token": self.token,
                 "appkey": self.appkey,
                 "data_point": "p1",
                 "start_time": start_time,
@@ -488,7 +488,7 @@ class ApiSolarCloud:
         url = self.base_url + "getDeviceList"
         body = {
             "appkey": self.appkey,
-            "token": self.token_cache,
+            "token": self.token,
             "curPage": 1,
             "size": 100,
             "ps_id": str(plant_id),
@@ -512,7 +512,7 @@ class ApiSolarCloud:
 
         for key in ps_keys:
             body = {
-                "token": self.token_cache,
+                "token": self.token,
                 "appkey": self.appkey,
                 "data_point": "p1",
                 "start_time": start_time,
@@ -565,7 +565,7 @@ class ApiSolarCloud:
             url = self.base_url + "getDeviceList"
             body_device_list = {
                 "appkey": self.appkey,
-                "token": self.token_cache,
+                "token": self.token,
                 "curPage": 1,
                 "size": 10,
                 "ps_id": str(plant_id),
@@ -594,7 +594,7 @@ class ApiSolarCloud:
         # Prepara body para dados técnicos
         body_dados = {
             "appkey": self.appkey,
-            "token": self.token_cache,
+            "token": self.token,
             "device_type": 1,
             "point_id_list": [
                 "6", "8", "10", "46", "48", "50", "52", "54", "56", "58", "7451", "7452",
