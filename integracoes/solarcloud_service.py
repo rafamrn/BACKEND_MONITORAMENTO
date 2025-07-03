@@ -6,7 +6,11 @@ from clients.isolarcloud_client import ApiSolarCloud
 def get_api_instance(db: Session, cliente_id: int) -> ApiSolarCloud:
     integracao = (
         db.query(Integracao)
-        .filter(Integracao.cliente_id == cliente_id, Integracao.plataforma == "isolarcloud")
+        .filter(
+    Integracao.cliente_id == cliente_id,
+    Integracao.plataforma.in_(["isolarcloud", "Sungrow"])
+)
+
         .first()
     )
 
