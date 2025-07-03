@@ -142,7 +142,7 @@ class ApiSolarCloud:
         agora = datetime.now(brasil)
 
         if period == "day" and date and plant_id:
-            if not self.token_cache:
+            if not self.token or not self.token_timestamp or time.time() - self.token_timestamp > 3600:
                 self.login_solarcloud()
 
             if not self.usinas_cache:
@@ -160,7 +160,7 @@ class ApiSolarCloud:
                     "setedias": self.geracao7_cache or []
                 }
 
-        if not self.token_cache:
+        if not self.token or not self.token_timestamp or time.time() - self.token_timestamp > 3600:
             self.login_solarcloud()
 
         if not self.usinas_cache:
@@ -181,7 +181,7 @@ class ApiSolarCloud:
                     "setedias": self.geracao7_cache or []
                 }
 
-        if not self.token_cache:
+        if not self.token or not self.token_timestamp or time.time() - self.token_timestamp > 3600:
             self.login_solarcloud()
 
         if not self.usinas_cache:
@@ -363,7 +363,7 @@ class ApiSolarCloud:
         brasil = timezone("America/Sao_Paulo")
         data_dt = datetime.strptime(data, "%Y-%m-%d").replace(tzinfo=brasil)
 
-        if not self.token_cache or time.time():
+        if not self.token or not self.token_timestamp or time.time() - self.token_timestamp > 3600 or time.time():
             self.login_solarcloud()
 
         if not self.usinas_cache:
@@ -465,7 +465,7 @@ class ApiSolarCloud:
 
 
     def get_geracao_mes(self, data: str, ps_key: str = None, plant_id: int = None):
-        if not self.token_cache or time.time() - self.token_timestamp > 600:
+        if not self.token or not self.token_timestamp or time.time() - self.token_timestamp > 3600 or time.time() - self.token_timestamp > 600:
             self.login_solarcloud()
 
         if not self.usinas_cache:
@@ -545,7 +545,7 @@ class ApiSolarCloud:
         }
     
     def get_geracao_ano(self, ano: str, ps_key: str = None, plant_id: int = None):
-        if not self.token_cache or time.time() - self.token_timestamp > 600:
+        if not self.token or not self.token_timestamp or time.time() - self.token_timestamp > 3600 or time.time() - self.token_timestamp > 600:
             self.login_solarcloud()
 
         if not self.usinas_cache:
@@ -620,7 +620,7 @@ class ApiSolarCloud:
 
     def get_dados_tecnicos(self, ps_key: str = None, plant_id: int = 1563706):
 
-        if not self.token_cache:
+        if not self.token or not self.token_timestamp or time.time() - self.token_timestamp > 3600:
             self.login_solarcloud()
 
         if not ps_key:
