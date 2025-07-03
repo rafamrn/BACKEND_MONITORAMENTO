@@ -13,13 +13,13 @@ from services.performance_service import (
     get_performance_30dias,
 )
 
-router = APIRouter(tags=["Sungrow / iSolarCloud", "Deye"])
+router = APIRouter()
 
 # 🔹 Listar usinas do cliente logado
 @router.get("/usinas")
 def listar_usinas(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     solarcloud = get_solarcloud_instance(db, current_user.id)
     deye = get_deye_instance(db, current_user.id)
@@ -29,29 +29,29 @@ def listar_usinas(
 
 # 🔹 Performance diária
 @router.get("/performance_diaria")
-def performance_diaria(
+def route_performance_diaria(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     solarcloud = get_solarcloud_instance(db, current_user.id)
     deye = get_deye_instance(db, current_user.id)
     return get_performance_diaria(solarcloud, deye, db)
 
-# 🔹 Performance 7 dias
+# 🔹 Performance últimos 7 dias
 @router.get("/performance_7dias")
-def performance_7dias(
+def route_performance_7dias(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     solarcloud = get_solarcloud_instance(db, current_user.id)
     deye = get_deye_instance(db, current_user.id)
     return get_performance_7dias(solarcloud, deye, db)
 
-# 🔹 Performance 30 dias
+# 🔹 Performance últimos 30 dias
 @router.get("/performance_30dias")
-def performance_30dias(
+def route_performance_30dias(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     solarcloud = get_solarcloud_instance(db, current_user.id)
     deye = get_deye_instance(db, current_user.id)
