@@ -38,48 +38,77 @@ class ApiSolarCloud:
     def login_solarcloud(self):
         if self.token_cache:
             return self.token_cache
-        
+
         url = self.base_url + "login"
         body = {
             "appkey": self.appkey,
             "user_password": self.password,
             "user_account": self.username
         }
-        response = self.session.post(url, json=body, headers=self.headers)
+
+        try:
+            response = self.session.post(url, json=body, headers=self.headers)
+        except Exception as e:
+            print("Erro na requisição de login:", e)
+            return None
+
         if response.status_code != 200:
             print("Erro no login:", response.status_code, response.text)
             return None
-        dados = response.json()
+
         try:
-            self.token = dados["result_data"]["token"]
-            self.token_cache = self.token
-            self.token_timestamp = time.time()
-        except KeyError:
+            dados = response.json()
+        except Exception as e:
+            print("Erro ao decodificar JSON da resposta de login:", e)
+            print("Resposta bruta:", response.text)
+            return None
+
+        if "result_data" not in dados or "token" not in dados["result_data"]:
             print("Token não encontrado na resposta:", dados)
             return None
-        print("Novo token SUNGROW obtido:", self.token)
+
+        self.token = dados["result_data"]["token"]
+        self.token_cache = self.token
+        self.token_timestamp = time.time()
+        print("✅ Novo token SUNGROW obtido:", self.token)
         return self.token
 
     def _post_with_auth(self, url, body):
+        # Garante que o token esteja presente
         if not self.token_cache:
-            self.login_solarcloud()
+            token = self.login_solarcloud()
+            if not token:
+                print("❌ Erro: não foi possível obter token de autenticação.")
+                return None
+        else:
+            token = self.token_cache
 
-        body["token"] = self.token_cache
+        body["token"] = token
         response = self.session.post(url, json=body, headers=self.headers)
 
-        if response.status_code in (401, 403):  # token expirado ou inválido
-            print("Token expirado ou inválido. Renovando...")
+        # Token expirado ou inválido
+        if response.status_code in (401, 403):
+            print("⚠️ Token expirado ou inválido. Tentando renovar...")
+
             self.token_cache = None
-            self.login_solarcloud()
-            body["token"] = self.token_cache
+            token = self.login_solarcloud()
+
+            if not token:
+                print("❌ Falha ao renovar token. Verifique credenciais.")
+                return None
+
+            body["token"] = token
             response = self.session.post(url, json=body, headers=self.headers)
+
+        # Verificação final: response ainda pode estar inválido
+        if not response:
+            print("❌ Erro: resposta nula após tentativa de requisição.")
+            return None
 
         return response
 
-    def get_usinas(self):
-        import time  # garante que time está disponível
 
-        # Expira cache após 10 minutos (300 segundos)
+    def get_usinas(self):
         if self.usinas_cache and (time.time() - getattr(self, "usinas_timestamp", 0)) < 300:
             return self.usinas_cache
 
@@ -92,11 +121,23 @@ class ApiSolarCloud:
         }
 
         response = self._post_with_auth(url, body)
+
+        if response is None:
+            print("Erro: resposta nula ao buscar usinas. Verifique token ou login.")
+            return []
+
+        # Verifica status code
         if response.status_code != 200:
             print("Erro ao buscar usinas:", response.status_code, response.text)
             return []
 
-        dados = response.json()
+        try:
+            dados = response.json()
+        except Exception as e:
+            print("Erro ao decodificar JSON da resposta de usinas:", e)
+            print("Resposta bruta:", response.text)
+            return []
+
         dados_usinas = []
 
         try:
@@ -127,6 +168,7 @@ class ApiSolarCloud:
 
         except KeyError as e:
             print("Erro ao acessar dados da resposta:", e)
+            print("Conteúdo recebido:", dados)
             return []
 
         # Salva no cache com timestamp
