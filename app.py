@@ -6,6 +6,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.security import OAuth2PasswordRequestForm
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from utils import get_integracao_por_plataforma
+from services.performance_service import calcular_performance_diaria, calcular_performance_7dias, calcular_performance_30dias
 from clients.isolarcloud_client import ApiSolarCloud
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, date
@@ -124,83 +125,126 @@ def listar_geracoes_diarias():
     return geracoes
 
 
-@app.get("/performance_diaria")
-def performance_diaria(
-    db: Session = Depends(get_db),
-    usuario_logado: User = Depends(get_current_user)
-):
-    integracao_sungrow = get_integracao_por_plataforma(db, usuario_logado.id, "Sungrow")
-    integracao_deye = get_integracao_por_plataforma(db, usuario_logado.id, "deye")
+# Obter performance diária
+def get_performance_diaria(isolarcloud, deye, db: Session):
+    global _performance_diaria_cache, _performance_diaria_cache_timestamp
 
-    sungrow_api = None
-    deye_api = None
+    agora = datetime.now()
+    if _performance_diaria_cache and _performance_diaria_cache_timestamp:
+        if (agora - _performance_diaria_cache_timestamp) < timedelta(minutes=5):
+            print("🔁 Retornando performance diária do cache")
+            return _performance_diaria_cache
 
-    if integracao_sungrow:
-        sungrow_api = ApiSolarCloud(
-            username=integracao_sungrow.username,
-            password=integracao_sungrow.senha,
-            appkey=integracao_sungrow.appkey,
-            x_access_key=integracao_sungrow.x_access_key
-        )
+    print("⚙️ Calculando nova performance diária...")
 
-    if integracao_deye:
-        deye_api = ApiDeye(
-            username=integracao_deye.username,
-            password=integracao_deye.senha
-        )
+    geracoes = []
 
-    return get_performance_diaria(sungrow_api, deye_api, db)
+    try:
+        if isolarcloud:
+            geracoes += isolarcloud.get_geracao().get("diario", [])
+    except Exception as e:
+        print("⚠️ Erro ao buscar geração da Sungrow (diária):", e)
 
-@app.get("/performance_7dias")
-def performance_7dias(db: Session = Depends(get_db), usuario_logado: User = Depends(get_current_user)):
-    integracao_sungrow = get_integracao_por_plataforma(db, usuario_logado.id, "Sungrow")
-    integracao_deye = get_integracao_por_plataforma(db, usuario_logado.id, "deye")
+    try:
+        if deye:
+            geracoes += deye.get_geracao().get("diario", [])
+    except Exception as e:
+        print("⚠️ Erro ao buscar geração da Deye (diária):", e)
 
-    sungrow_api = None
-    deye_api = None
+    resultados = []
+    for g in geracoes:
+        ps_id = g.get("ps_id")
+        energia = g.get("energia_gerada_kWh")
+        if ps_id and energia is not None:
+            resultado = calcular_performance_diaria(ps_id, energia, db)
+            resultados.append(resultado)
 
-    if integracao_sungrow:
-        sungrow_api = ApiSolarCloud(
-            username=integracao_sungrow.username,
-            password=integracao_sungrow.senha,
-            appkey=integracao_sungrow.appkey,
-            x_access_key=integracao_sungrow.x_access_key
-        )
+    _performance_diaria_cache = resultados
+    _performance_diaria_cache_timestamp = agora
+    print("✅ Performance diária salva em cache")
+    return resultados
 
-    if integracao_deye:
-        deye_api = ApiDeye(
-            username=integracao_deye.username,
-            password=integracao_deye.senha
-        )
 
-    return get_performance_7dias(sungrow_api, deye_api, db)
+# Obter performance 7 dias
+def get_performance_7dias(isolarcloud, deye, db: Session):
+    global _performance_7dias_cache, _performance_7dias_cache_timestamp
 
-@app.get("/performance_30dias")
-def performance_30dias(
-    db: Session = Depends(get_db),
-    usuario_logado: User = Depends(get_current_user)
-):
-    integracao_sungrow = get_integracao_por_plataforma(db, usuario_logado.id, "Sungrow")
-    integracao_deye = get_integracao_por_plataforma(db, usuario_logado.id, "deye")
+    agora = datetime.now()
+    if _performance_7dias_cache and _performance_7dias_cache_timestamp:
+        if (agora - _performance_7dias_cache_timestamp) < timedelta(minutes=10):
+            print("🔁 Retornando performance de 7 dias do cache")
+            return _performance_7dias_cache
 
-    sungrow_api = None
-    deye_api = None
+    print("⚙️ Calculando nova performance dos últimos 7 dias...")
 
-    if integracao_sungrow:
-        sungrow_api = ApiSolarCloud(
-            username=integracao_sungrow.username,
-            password=integracao_sungrow.senha,
-            appkey=integracao_sungrow.appkey,
-            x_access_key=integracao_sungrow.x_access_key
-        )
+    geracoes = []
 
-    if integracao_deye:
-        deye_api = ApiDeye(
-            username=integracao_deye.username,
-            password=integracao_deye.senha
-        )
+    try:
+        if isolarcloud:
+            geracoes += isolarcloud.get_geracao().get("setedias", [])
+    except Exception as e:
+        print("⚠️ Erro ao buscar geração da Sungrow (7 dias):", e)
 
-    return get_performance_30dias(sungrow_api, deye_api, db)
+    try:
+        if deye:
+            geracoes += deye.get_geracao().get("setedias", [])
+    except Exception as e:
+        print("⚠️ Erro ao buscar geração da Deye (7 dias):", e)
+
+    resultados = []
+    for g in geracoes:
+        ps_id = g.get("ps_id")
+        energia = g.get("energia_gerada_kWh")
+        if ps_id and energia is not None:
+            resultado = calcular_performance_7dias(ps_id, energia, db)
+            resultados.append(resultado)
+
+    _performance_7dias_cache = resultados
+    _performance_7dias_cache_timestamp = agora
+    print("✅ Performance de 7 dias salva em cache")
+    return resultados
+
+
+# Obter performance 30 dias
+def get_performance_30dias(isolarcloud, deye, db: Session):
+    global _performance_30dias_cache, _performance_30dias_cache_timestamp
+
+    agora = datetime.now()
+    if _performance_30dias_cache and _performance_30dias_cache_timestamp:
+        if (agora - _performance_30dias_cache_timestamp) < timedelta(minutes=10):
+            print("🔁 Retornando performance de 30 dias do cache")
+            return _performance_30dias_cache
+
+    print("⚙️ Calculando nova performance dos últimos 30 dias...")
+
+    geracoes = []
+
+    try:
+        if isolarcloud:
+            geracoes += isolarcloud.get_geracao().get("mensal", {}).get("por_usina", [])
+    except Exception as e:
+        print("⚠️ Erro ao buscar geração da Sungrow (30 dias):", e)
+
+    try:
+        if deye:
+            geracoes += deye.get_geracao().get("mensal", {}).get("por_usina", [])
+    except Exception as e:
+        print("⚠️ Erro ao buscar geração da Deye (30 dias):", e)
+
+    resultados = []
+    for g in geracoes:
+        ps_id = g.get("ps_id")
+        energia = g.get("energia_gerada_kWh")
+        if ps_id and energia is not None:
+            resultado = calcular_performance_30dias(ps_id, energia, db)
+            resultados.append(resultado)
+
+    _performance_30dias_cache = resultados
+    _performance_30dias_cache_timestamp = agora
+    print("✅ Performance de 30 dias salva em cache")
+    return resultados
+
+
 
 
 
