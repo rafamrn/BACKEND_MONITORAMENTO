@@ -72,32 +72,22 @@ def listar_usinas(usuario_logado: User = Depends(get_current_user), db: Session 
     try:
         integracao_deye = get_integracao_por_plataforma(db, usuario_logado.id, "deye")
         print("🔎 Integração Deye:", integracao_deye)
-
         if integracao_deye:
             deye = ApiDeye(
                 username=integracao_deye.username,
                 password=integracao_deye.senha
             )
-            usinas_deye = deye.get_usinas()
-            print(f"✅ {len(usinas_deye)} usinas da Deye encontradas")
-            usinas += usinas_deye
+            usinas += deye.get_usinas()
         else:
             print("⚠️ Integração Deye não encontrada.")
     except Exception as e:
         print("⚠️ Erro ao buscar usinas da Deye:", str(e))
 
-    # ISOLAR (Sungrow)
+    # SUNGROW (nome correto no banco é "Sungrow")
     try:
-        integracao_solar = get_integracao_por_plataforma(db, usuario_logado.id, "isolarcloud")
-        print("🔎 Tentando buscar integração isolarcloud para cliente ID:", usuario_logado.id)
-        integracao_solar = (
-            db.query(Integracao)
-            .filter(Integracao.cliente_id == usuario_logado.id)
-            .filter(Integracao.plataforma == "isolarcloud")
-            .first()
-        )
+        print(f"🔎 Tentando buscar integração Sungrow para cliente ID: {usuario_logado.id}")
+        integracao_solar = get_integracao_por_plataforma(db, usuario_logado.id, "Sungrow")
         print("🔁 Resultado:", integracao_solar)
-
         if integracao_solar:
             isolarcloud = ApiSolarCloud(
                 username=integracao_solar.username,
@@ -105,17 +95,15 @@ def listar_usinas(usuario_logado: User = Depends(get_current_user), db: Session 
                 appkey=integracao_solar.appkey,
                 x_access_key=integracao_solar.x_access_key
             )
-            print("🟢 Executando get_usinas da Sungrow...")
-            usinas_solar = isolarcloud.get_usinas()
-            print(f"✅ {len(usinas_solar)} usinas da Sungrow encontradas")
-            usinas += usinas_solar
+            usinas += isolarcloud.get_usinas()
         else:
-            print("⚠️ Integração isolarcloud não encontrada para o cliente.")
+            print("⚠️ Integração Sungrow não encontrada para o cliente.")
     except Exception as e:
-        print("❌ Erro ao buscar usinas da Sungrow:", str(e))
+        print("⚠️ Erro ao buscar usinas da Sungrow:", str(e))
 
-    print("📦 Total de usinas retornadas:", len(usinas))
+    print(f"📦 Total de usinas retornadas: {len(usinas)}")
     return agrupar_usinas_por_nome(usinas)
+
 
 
 
