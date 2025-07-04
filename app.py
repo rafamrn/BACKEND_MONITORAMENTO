@@ -82,19 +82,47 @@ def listar_usinas(usuario_logado: User = Depends(get_current_user)):
 
 @app.get("/geracoes_diarias")
 def listar_geracoes_diarias():
-    return isolarcloud.get_geracao() + deye.get_geracao()
+    geracoes = []
+
+    try:
+        geracoes += isolarcloud.get_geracao()
+    except Exception as e:
+        print("⚠️ Erro ao obter geração da iSolarCloud:", str(e))
+
+    try:
+        geracoes += deye.get_geracao()
+    except Exception as e:
+        print("⚠️ Erro ao obter geração da Deye:", str(e))
+
+    return geracoes
+
 
 @app.get("/performance_diaria")
 def performance_diaria(db: Session = Depends(get_db)):
-    return get_performance_diaria(isolarcloud, deye, db)
+    try:
+        return get_performance_diaria(isolarcloud, deye, db)
+    except Exception as e:
+        print("⚠️ Erro ao calcular performance diária:", str(e))
+        raise HTTPException(status_code=500, detail="Erro ao calcular performance diária.")
+
 
 @app.get("/performance_7dias")
 def performance_7dias(db: Session = Depends(get_db)):
-    return get_performance_7dias(isolarcloud, deye, db)
+    try:
+        return get_performance_7dias(isolarcloud, deye, db)
+    except Exception as e:
+        print("⚠️ Erro ao calcular performance dos últimos 7 dias:", str(e))
+        raise HTTPException(status_code=500, detail="Erro ao calcular performance dos últimos 7 dias.")
+
 
 @app.get("/performance_30dias")
 def performance_30dias(db: Session = Depends(get_db)):
-    return get_performance_30dias(isolarcloud, deye, db)
+    try:
+        return get_performance_30dias(isolarcloud, deye, db)
+    except Exception as e:
+        print("⚠️ Erro ao calcular performance dos últimos 30 dias:", str(e))
+        raise HTTPException(status_code=500, detail="Erro ao calcular performance dos últimos 30 dias.")
+
 
 @app.get("/dados_tecnicos")
 def obter_dados_tecnicos(plant_id: int = Query(...), usuario_logado: User = Depends(get_current_user)):
