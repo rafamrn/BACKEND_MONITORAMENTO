@@ -49,22 +49,26 @@ class ApiSolarCloud:
         try:
             response = self.session.post(url, json=body, headers=self.headers)
         except Exception as e:
-            print("Erro na requisição de login:", e)
+            print("❌ Erro na requisição de login:", e)
             return None
 
         if response.status_code != 200:
-            print("Erro no login:", response.status_code, response.text)
+            print("❌ Erro no login:", response.status_code, response.text)
             return None
 
         try:
             dados = response.json()
         except Exception as e:
-            print("Erro ao decodificar JSON da resposta de login:", e)
+            print("❌ Erro ao decodificar JSON da resposta de login:", e)
             print("Resposta bruta:", response.text)
             return None
 
+        if not dados or not isinstance(dados, dict):
+            print("❌ Resposta de login inválida:", dados)
+            return None
+
         if "result_data" not in dados or "token" not in dados["result_data"]:
-            print("Token não encontrado na resposta:", dados)
+            print("❌ Token não encontrado na resposta:", dados)
             return None
 
         self.token = dados["result_data"]["token"]
@@ -73,12 +77,12 @@ class ApiSolarCloud:
         print("✅ Novo token SUNGROW obtido:", self.token)
         return self.token
 
+
     def _post_with_auth(self, url, body):
-        # Garante que o token esteja presente
         if not self.token_cache:
             token = self.login_solarcloud()
             if not token:
-                print("❌ Erro: não foi possível obter token de autenticação.")
+                print("❌ Falha ao obter token.")
                 return None
         else:
             token = self.token_cache
@@ -86,26 +90,18 @@ class ApiSolarCloud:
         body["token"] = token
         response = self.session.post(url, json=body, headers=self.headers)
 
-        # Token expirado ou inválido
         if response.status_code in (401, 403):
-            print("⚠️ Token expirado ou inválido. Tentando renovar...")
-
+            print("⚠️ Token expirado. Renovando...")
             self.token_cache = None
             token = self.login_solarcloud()
-
             if not token:
-                print("❌ Falha ao renovar token. Verifique credenciais.")
+                print("❌ Falha ao renovar token.")
                 return None
-
             body["token"] = token
             response = self.session.post(url, json=body, headers=self.headers)
 
-        # Verificação final: response ainda pode estar inválido
-        if not response:
-            print("❌ Erro: resposta nula após tentativa de requisição.")
-            return None
-
         return response
+
 
 
     def get_usinas(self):
