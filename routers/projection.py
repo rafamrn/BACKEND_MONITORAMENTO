@@ -6,13 +6,25 @@ from database import get_db
 from fastapi import Query
 from typing import List
 from fastapi.responses import JSONResponse
+from dependencies import get_current_user
+from modelos import User
 
 router = APIRouter()
 
 @router.post("/projecoes")
-def salvar_projecoes(data: MonthlyProjectionCreate, db: Session = Depends(get_db)):
+def salvar_projecoes(
+    data: MonthlyProjectionCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)  # <- aqui
+):
+    db.query(MonthlyProjection).filter(
+    MonthlyProjection.cliente_id == current_user.id,
+    MonthlyProjection.plant_id == data.plant_id,
+    MonthlyProjection.year == data.year
+).delete()
     for item in data.projections:
         nova_proj = MonthlyProjection(
+            cliente_id=current_user.id,  # <- salva cliente
             plant_id=data.plant_id,
             month=item.month,
             year=data.year,
