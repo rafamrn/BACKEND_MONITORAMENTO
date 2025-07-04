@@ -63,8 +63,22 @@ deye = ApiDeye(settings.DEYE_USER, settings.DEYE_PASS, settings.DEYE_APPID, sett
 
 @app.get("/usina", response_model=List[UsinaModel])
 def listar_usinas(usuario_logado: User = Depends(get_current_user)):
-    usinas = deye.get_usinas() + isolarcloud.get_usinas()
+    usinas = []
+
+    try:
+        usinas_deye = deye.get_usinas()
+        usinas.extend(usinas_deye)
+    except Exception as e:
+        print("⚠️ Erro ao obter usinas da Deye:", str(e))
+
+    try:
+        usinas_solarcloud = isolarcloud.get_usinas()
+        usinas.extend(usinas_solarcloud)
+    except Exception as e:
+        print("⚠️ Erro ao obter usinas da iSolarCloud:", str(e))
+
     return agrupar_usinas_por_nome(usinas)
+
 
 @app.get("/geracoes_diarias")
 def listar_geracoes_diarias():
