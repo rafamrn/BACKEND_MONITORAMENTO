@@ -125,30 +125,83 @@ def listar_geracoes_diarias():
 
 
 @app.get("/performance_diaria")
-def performance_diaria(db: Session = Depends(get_db)):
-    try:
-        return get_performance_diaria(isolarcloud, deye, db)
-    except Exception as e:
-        print("⚠️ Erro ao calcular performance diária:", str(e))
-        raise HTTPException(status_code=500, detail="Erro ao calcular performance diária.")
+def performance_diaria(
+    db: Session = Depends(get_db),
+    usuario_logado: User = Depends(get_current_user)
+):
+    integracao_sungrow = get_integracao_por_plataforma(db, usuario_logado.id, "Sungrow")
+    integracao_deye = get_integracao_por_plataforma(db, usuario_logado.id, "deye")
 
+    sungrow_api = None
+    deye_api = None
+
+    if integracao_sungrow:
+        sungrow_api = ApiSolarCloud(
+            username=integracao_sungrow.username,
+            password=integracao_sungrow.senha,
+            appkey=integracao_sungrow.appkey,
+            x_access_key=integracao_sungrow.x_access_key
+        )
+
+    if integracao_deye:
+        deye_api = ApiDeye(
+            username=integracao_deye.username,
+            password=integracao_deye.senha
+        )
+
+    return get_performance_diaria(sungrow_api, deye_api, db)
 
 @app.get("/performance_7dias")
-def performance_7dias(db: Session = Depends(get_db)):
-    try:
-        return get_performance_7dias(isolarcloud, deye, db)
-    except Exception as e:
-        print("⚠️ Erro ao calcular performance dos últimos 7 dias:", str(e))
-        raise HTTPException(status_code=500, detail="Erro ao calcular performance dos últimos 7 dias.")
+def performance_7dias(db: Session = Depends(get_db), usuario_logado: User = Depends(get_current_user)):
+    integracao_sungrow = get_integracao_por_plataforma(db, usuario_logado.id, "Sungrow")
+    integracao_deye = get_integracao_por_plataforma(db, usuario_logado.id, "deye")
 
+    sungrow_api = None
+    deye_api = None
+
+    if integracao_sungrow:
+        sungrow_api = ApiSolarCloud(
+            username=integracao_sungrow.username,
+            password=integracao_sungrow.senha,
+            appkey=integracao_sungrow.appkey,
+            x_access_key=integracao_sungrow.x_access_key
+        )
+
+    if integracao_deye:
+        deye_api = ApiDeye(
+            username=integracao_deye.username,
+            password=integracao_deye.senha
+        )
+
+    return get_performance_7dias(sungrow_api, deye_api, db)
 
 @app.get("/performance_30dias")
-def performance_30dias(db: Session = Depends(get_db)):
-    try:
-        return get_performance_30dias(isolarcloud, deye, db)
-    except Exception as e:
-        print("⚠️ Erro ao calcular performance dos últimos 30 dias:", str(e))
-        raise HTTPException(status_code=500, detail="Erro ao calcular performance dos últimos 30 dias.")
+def performance_30dias(
+    db: Session = Depends(get_db),
+    usuario_logado: User = Depends(get_current_user)
+):
+    integracao_sungrow = get_integracao_por_plataforma(db, usuario_logado.id, "Sungrow")
+    integracao_deye = get_integracao_por_plataforma(db, usuario_logado.id, "deye")
+
+    sungrow_api = None
+    deye_api = None
+
+    if integracao_sungrow:
+        sungrow_api = ApiSolarCloud(
+            username=integracao_sungrow.username,
+            password=integracao_sungrow.senha,
+            appkey=integracao_sungrow.appkey,
+            x_access_key=integracao_sungrow.x_access_key
+        )
+
+    if integracao_deye:
+        deye_api = ApiDeye(
+            username=integracao_deye.username,
+            password=integracao_deye.senha
+        )
+
+    return get_performance_30dias(sungrow_api, deye_api, db)
+
 
 
 @app.get("/dados_tecnicos")
