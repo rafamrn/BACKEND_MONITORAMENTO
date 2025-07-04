@@ -105,8 +105,6 @@ class ApiSolarCloud:
 
         return response
 
-
-
     def get_usinas(self):
         if self.usinas_cache and (time.time() - getattr(self, "usinas_timestamp", 0)) < 300:
             return self.usinas_cache

@@ -2,6 +2,8 @@ import unicodedata
 from collections import defaultdict
 from typing import List
 from passlib.context import CryptContext
+from models import Integracao
+from sqlalchemy.orm import Session
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -73,3 +75,11 @@ def parse_float(value):
         return float(str(value).replace(",", "."))
     except (ValueError, TypeError):
         return 0.0
+    
+def get_integracao_por_plataforma(db: Session, cliente_id: int, plataforma: str):
+    return (
+        db.query(Integracao)
+        .filter(Integracao.cliente_id == cliente_id)
+        .filter(Integracao.plataforma == plataforma)
+        .first()
+    )

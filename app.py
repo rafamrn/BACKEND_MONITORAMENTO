@@ -5,10 +5,13 @@ from fastapi.responses import FileResponse
 from fastapi.encoders import jsonable_encoder
 from fastapi.security import OAuth2PasswordRequestForm
 from starlette.middleware.trustedhost import TrustedHostMiddleware
+from utils import get_integracao_por_plataforma
+from clients.isolarcloud_client import ApiSolarCloud
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, date
 from typing import List, Optional
 from uuid import uuid4
+from clients.deye_client import ApiDeye
 import os
 import secrets
 # Internos
@@ -62,22 +65,37 @@ deye = ApiDeye(settings.DEYE_USER, settings.DEYE_PASS, settings.DEYE_APPID, sett
 # ============== ⬇ ROTAS PRINCIPAIS ==============
 
 @app.get("/usina", response_model=List[UsinaModel])
-def listar_usinas(usuario_logado: User = Depends(get_current_user)):
+def listar_usinas(usuario_logado: User = Depends(get_current_user), db: Session = Depends(get_db)):
     usinas = []
 
+    # DEYE
     try:
-        usinas_deye = deye.get_usinas()
-        usinas.extend(usinas_deye)
+        integracao_deye = get_integracao_por_plataforma(db, usuario_logado.id, "deye")
+        if integracao_deye:
+            deye = ApiDeye(
+                username=integracao_deye.username,
+                password=integracao_deye.senha
+            )
+            usinas += deye.get_usinas()
     except Exception as e:
-        print("⚠️ Erro ao obter usinas da Deye:", str(e))
+        print("⚠️ Erro ao buscar usinas da Deye:", str(e))
 
+    # ISOLAR
     try:
-        usinas_solarcloud = isolarcloud.get_usinas()
-        usinas.extend(usinas_solarcloud)
+        integracao_solar = get_integracao_por_plataforma(db, usuario_logado.id, "isolarcloud")
+        if integracao_solar:
+            isolarcloud = ApiSolarCloud(
+                username=integracao_solar.username,
+                password=integracao_solar.senha,
+                appkey=integracao_solar.appkey,
+                x_access_key=integracao_solar.x_access_key
+            )
+            usinas += isolarcloud.get_usinas()
     except Exception as e:
-        print("⚠️ Erro ao obter usinas da iSolarCloud:", str(e))
+        print("⚠️ Erro ao buscar usinas da Sungrow:", str(e))
 
     return agrupar_usinas_por_nome(usinas)
+
 
 
 @app.get("/geracoes_diarias")
