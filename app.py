@@ -79,6 +79,8 @@ def listar_usinas(usuario_logado: User = Depends(get_current_user), db: Session 
             usinas += deye.get_usinas()
     except Exception as e:
         print("⚠️ Erro ao buscar usinas da Deye:", str(e))
+        print("🔎 Usinas retornadas:", usinas)
+        return agrupar_usinas_por_nome(usinas)
 
     # ISOLAR
     try:
