@@ -166,9 +166,7 @@ def get_performance_7dias(isolarcloud, deye, db: Session, cliente_id: int):
     print("⚙️ Calculando nova performance dos últimos 7 dias...")
 
     resultado_geracao_isolarcloud = isolarcloud.get_geracao()
-    resultado_geracao_deye = []
-    if deye:
-        resultado_geracao_deye = deye.get_geracao().get("7dias", [])
+    resultado_geracao_deye = deye.get_geracao()
 
     if not isinstance(resultado_geracao_isolarcloud, dict) or not isinstance(resultado_geracao_deye, dict):
         raise ValueError("⚠️ Erro: get_geracao() deve retornar dicionários válidos.")
@@ -203,9 +201,7 @@ def get_performance_30dias(isolarcloud, deye, db: Session, cliente_id: int):
     print("⚙️ Calculando nova performance dos últimos 30 dias...")
 
     resultado_geracao_isolarcloud = isolarcloud.get_geracao()
-    resultado_geracao_deye = []
-    if deye:
-        resultado_geracao_deye = deye.get_geracao().get("7dias", [])
+    resultado_geracao_deye = deye.get_geracao()
 
     if not isinstance(resultado_geracao_isolarcloud, dict) or not isinstance(resultado_geracao_deye, dict):
         raise ValueError("⚠️ Erro: get_geracao() deve retornar dicionários com a chave 'mensal'.")
