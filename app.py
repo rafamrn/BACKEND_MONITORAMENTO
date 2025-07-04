@@ -150,21 +150,8 @@ def performance_diaria(
             password=integracao_deye.senha
         )
 
-    resultado_geracao = []
+    return get_performance_diaria(sungrow_api, deye_api, db, usuario_logado.id)
 
-    if sungrow_api:
-        try:
-            resultado_geracao += sungrow_api.get_geracao().get("diario", [])
-        except Exception as e:
-            print("⚠️ Erro ao buscar geração da Sungrow (diária):", e)
-
-    if deye_api:
-        try:
-            resultado_geracao += deye_api.get_geracao().get("diario", [])
-        except Exception as e:
-            print("⚠️ Erro ao buscar geração da Deye (diária):", e)
-
-    return resultado_geracao
 
 
 @app.get("/performance_7dias")
@@ -189,22 +176,7 @@ def performance_7dias(db: Session = Depends(get_db), usuario_logado: User = Depe
             password=integracao_deye.senha
         )
 
-    resultado_geracao = []
-
-    if sungrow_api:
-        try:
-            resultado_geracao += sungrow_api.get_geracao().get("7dias", [])
-        except Exception as e:
-            print("⚠️ Erro ao buscar geração da Sungrow (7 dias):", e)
-
-    if deye_api:
-        try:
-            resultado_geracao += deye_api.get_geracao().get("7dias", [])
-        except Exception as e:
-            print("⚠️ Erro ao buscar geração da Deye (7 dias):", e)
-
-    return resultado_geracao
-
+    return get_performance_7dias(sungrow_api, deye_api, db, usuario_logado.id)
 
 @app.get("/performance_30dias")
 def performance_30dias(
@@ -231,21 +203,8 @@ def performance_30dias(
             password=integracao_deye.senha
         )
 
-    resultado_geracao = []
+    return get_performance_30dias(sungrow_api, deye_api, db, usuario_logado.id)
 
-    if sungrow_api:
-        try:
-            resultado_geracao += sungrow_api.get_geracao().get("30dias", [])
-        except Exception as e:
-            print("⚠️ Erro ao buscar geração da Sungrow (30 dias):", e)
-
-    if deye_api:
-        try:
-            resultado_geracao += deye_api.get_geracao().get("30dias", [])
-        except Exception as e:
-            print("⚠️ Erro ao buscar geração da Deye (30 dias):", e)
-
-    return resultado_geracao
 
 @app.get("/dados_tecnicos")
 def obter_dados_tecnicos(plant_id: int = Query(...), usuario_logado: User = Depends(get_current_user)):
