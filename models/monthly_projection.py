@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Float, DateTime, func
+from sqlalchemy import Column, Integer, Float, DateTime, func, ForeignKey
 from database import Base
 
 class MonthlyProjection(Base):
@@ -11,3 +11,4 @@ class MonthlyProjection(Base):
     projection_kwh = Column(Float, nullable=False)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    cliente_id = Column(Integer, ForeignKey("users.id"))
