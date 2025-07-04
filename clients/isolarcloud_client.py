@@ -63,19 +63,22 @@ class ApiSolarCloud:
             print("Resposta bruta:", response.text)
             return None
 
+        # ✅ AQUI está o ponto crítico corrigido
         if not dados or not isinstance(dados, dict):
             print("❌ Resposta de login inválida:", dados)
             return None
 
-        if "result_data" not in dados or "token" not in dados["result_data"]:
+        result_data = dados.get("result_data")
+        if not result_data or "token" not in result_data:
             print("❌ Token não encontrado na resposta:", dados)
             return None
 
-        self.token = dados["result_data"]["token"]
+        self.token = result_data["token"]
         self.token_cache = self.token
         self.token_timestamp = time.time()
         print("✅ Novo token SUNGROW obtido:", self.token)
         return self.token
+
 
 
     def _post_with_auth(self, url, body):
