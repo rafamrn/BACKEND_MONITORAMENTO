@@ -2,7 +2,7 @@ import unicodedata
 from collections import defaultdict
 from typing import List
 from passlib.context import CryptContext
-from models import Integracao
+from modelos import Integracao
 from sqlalchemy.orm import Session
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
