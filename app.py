@@ -71,20 +71,26 @@ def listar_usinas(usuario_logado: User = Depends(get_current_user), db: Session 
     # DEYE
     try:
         integracao_deye = get_integracao_por_plataforma(db, usuario_logado.id, "deye")
+        print("🔎 Integração Deye:", integracao_deye)
+
         if integracao_deye:
             deye = ApiDeye(
                 username=integracao_deye.username,
                 password=integracao_deye.senha
             )
-            usinas += deye.get_usinas()
+            usinas_deye = deye.get_usinas()
+            print(f"✅ {len(usinas_deye)} usinas da Deye encontradas")
+            usinas += usinas_deye
+        else:
+            print("⚠️ Integração Deye não encontrada.")
     except Exception as e:
         print("⚠️ Erro ao buscar usinas da Deye:", str(e))
-        print("🔎 Usinas retornadas:", usinas)
-        return agrupar_usinas_por_nome(usinas)
 
-    # ISOLAR
+    # ISOLAR (Sungrow)
     try:
         integracao_solar = get_integracao_por_plataforma(db, usuario_logado.id, "isolarcloud")
+        print("🔎 Integração Sungrow:", integracao_solar)
+
         if integracao_solar:
             isolarcloud = ApiSolarCloud(
                 username=integracao_solar.username,
@@ -92,10 +98,16 @@ def listar_usinas(usuario_logado: User = Depends(get_current_user), db: Session 
                 appkey=integracao_solar.appkey,
                 x_access_key=integracao_solar.x_access_key
             )
-            usinas += isolarcloud.get_usinas()
+            print("🟢 Executando get_usinas da Sungrow...")
+            usinas_solar = isolarcloud.get_usinas()
+            print(f"✅ {len(usinas_solar)} usinas da Sungrow encontradas")
+            usinas += usinas_solar
+        else:
+            print("⚠️ Integração isolarcloud não encontrada para o cliente.")
     except Exception as e:
-        print("⚠️ Erro ao buscar usinas da Sungrow:", str(e))
+        print("❌ Erro ao buscar usinas da Sungrow:", str(e))
 
+    print("📦 Total de usinas retornadas:", len(usinas))
     return agrupar_usinas_por_nome(usinas)
 
 
