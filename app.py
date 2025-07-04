@@ -89,7 +89,14 @@ def listar_usinas(usuario_logado: User = Depends(get_current_user), db: Session 
     # ISOLAR (Sungrow)
     try:
         integracao_solar = get_integracao_por_plataforma(db, usuario_logado.id, "isolarcloud")
-        print("🔎 Integração Sungrow:", integracao_solar)
+        print("🔎 Tentando buscar integração isolarcloud para cliente ID:", usuario_logado.id)
+        integracao_solar = (
+            db.query(Integracao)
+            .filter(Integracao.cliente_id == usuario_logado.id)
+            .filter(Integracao.plataforma == "isolarcloud")
+            .first()
+        )
+        print("🔁 Resultado:", integracao_solar)
 
         if integracao_solar:
             isolarcloud = ApiSolarCloud(
