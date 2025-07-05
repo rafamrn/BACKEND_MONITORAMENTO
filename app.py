@@ -42,6 +42,7 @@ from routes import convites
 from rotas import solarcloud_routes
 from passlib.hash import bcrypt
 from clients.isolarcloud_client import ApiSolarCloud
+from services.scheduler import scheduler
 
 # ============== ⬇ APP ==============
 app = FastAPI()
