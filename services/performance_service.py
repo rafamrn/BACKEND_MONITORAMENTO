@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from models.monthly_projection import MonthlyProjection
 from datetime import datetime, timedelta
 import calendar
+from models.performance_cache import PerformanceCache
 
 # Cache global
 _performance_diaria_cache = None
@@ -105,134 +106,96 @@ def calcular_performance_30dias(plant_id: int, energia_gerada: float, db: Sessio
 
 # Obter performance diária
 def get_performance_diaria(isolarcloud, deye, db: Session, cliente_id: int):
-    global _performance_diaria_cache, _performance_diaria_cache_timestamp
+    from models.performance_cache import PerformanceCache
 
-    agora = datetime.now()
-    if _performance_diaria_cache and _performance_diaria_cache_timestamp:
-        if (agora - _performance_diaria_cache_timestamp) < timedelta(minutes=5):
-            print("🔁 Retornando performance diária do cache")
-            return _performance_diaria_cache
+    cache = (
+        db.query(PerformanceCache)
+        .filter_by(cliente_id=cliente_id, tipo="diaria")
+        .order_by(PerformanceCache.updated_at.desc())
+        .first()
+    )
+    if cache and (datetime.now() - cache.updated_at) < timedelta(minutes=5):
+        print("🔁 Cache diária do banco")
+        return cache.resultado_json
 
     print("⚙️ Calculando nova performance diária...")
 
-    resultado_geracao_isolarcloud = {}
-    resultado_geracao_deye = {}
-
+    resultado_geracao = []
     if isolarcloud:
-        try:
-            resultado_geracao_isolarcloud = isolarcloud.get_geracao()
-        except Exception as e:
-            print("⚠️ Erro ao obter geração isolarcloud:", e)
-
+        resultado_geracao += isolarcloud.get_geracao().get("diario", [])
     if deye:
-        try:
-            resultado_geracao_deye = deye.get_geracao()
-        except Exception as e:
-            print("⚠️ Erro ao obter geração deye:", e)
+        resultado_geracao += deye.get_geracao().get("diario", [])
 
-    geracoes = resultado_geracao_isolarcloud.get("diario", []) + resultado_geracao_deye.get("diario", [])
-    resultados = []
+    resultados = [
+        calcular_performance_diaria(g["ps_id"], g["energia_gerada_kWh"], db)
+        for g in resultado_geracao
+    ]
 
-    for g in geracoes:
-        ps_id = g.get("ps_id")
-        energia = g.get("energia_gerada_kWh")
-        if ps_id and energia is not None:
-            resultado = calcular_performance_diaria(ps_id, energia, db, cliente_id)
-            resultados.append(resultado)
-
-    _performance_diaria_cache = resultados
-    _performance_diaria_cache_timestamp = agora
-    print("✅ Performance diária salva em cache")
+    db.add(PerformanceCache(cliente_id=cliente_id, tipo="diaria", resultado_json=resultados))
+    db.commit()
     return resultados
 
 
 
 # Obter performance 7 dias
 def get_performance_7dias(isolarcloud, deye, db: Session, cliente_id: int):
-    global _performance_7dias_cache, _performance_7dias_cache_timestamp
+    from models.performance_cache import PerformanceCache
 
-    agora = datetime.now()
-    if _performance_7dias_cache and _performance_7dias_cache_timestamp:
-        if (agora - _performance_7dias_cache_timestamp) < timedelta(minutes=10):
-            print("🔁 Retornando performance de 7 dias do cache")
-            return _performance_7dias_cache
+    cache = (
+        db.query(PerformanceCache)
+        .filter_by(cliente_id=cliente_id, tipo="7dias")
+        .order_by(PerformanceCache.updated_at.desc())
+        .first()
+    )
+    if cache and (datetime.now() - cache.updated_at) < timedelta(minutes=10):
+        print("🔁 Cache 7 dias do banco")
+        return cache.resultado_json
 
-    print("⚙️ Calculando nova performance dos últimos 7 dias...")
+    print("⚙️ Calculando nova performance de 7 dias...")
 
-    resultado_geracao_isolarcloud = {}
-    resultado_geracao_deye = {}
-
+    resultado_geracao = []
     if isolarcloud:
-        try:
-            resultado_geracao_isolarcloud = isolarcloud.get_geracao()
-        except Exception as e:
-            print("⚠️ Erro ao obter geração isolarcloud:", e)
-
+        resultado_geracao += isolarcloud.get_geracao().get("setedias", [])
     if deye:
-        try:
-            resultado_geracao_deye = deye.get_geracao()
-        except Exception as e:
-            print("⚠️ Erro ao obter geração deye:", e)
+        resultado_geracao += deye.get_geracao().get("setedias", [])
 
-    geracoes = resultado_geracao_isolarcloud.get("setedias", []) + resultado_geracao_deye.get("setedias", [])
-    resultados = []
+    resultados = [
+        calcular_performance_7dias(g["ps_id"], g["energia_gerada_kWh"], db)
+        for g in resultado_geracao
+    ]
 
-    for g in geracoes:
-        ps_id = g.get("ps_id")
-        energia = g.get("energia_gerada_kWh")
-        if ps_id and energia is not None:
-            resultado = calcular_performance_7dias(ps_id, energia, db, cliente_id)
-            resultados.append(resultado)
-
-    _performance_7dias_cache = resultados
-    _performance_7dias_cache_timestamp = agora
-    print("✅ Performance 7 dias salva em cache")
+    db.add(PerformanceCache(cliente_id=cliente_id, tipo="7dias", resultado_json=resultados))
+    db.commit()
     return resultados
 
-
-
-
 # Obter performance 30 dias
+
 def get_performance_30dias(isolarcloud, deye, db: Session, cliente_id: int):
-    global _performance_30dias_cache, _performance_30dias_cache_timestamp
+    from models.performance_cache import PerformanceCache
 
-    agora = datetime.now()
-    if _performance_30dias_cache and _performance_30dias_cache_timestamp:
-        if (agora - _performance_30dias_cache_timestamp) < timedelta(minutes=10):
-            print("🔁 Retornando performance de 30 dias do cache")
-            return _performance_30dias_cache
+    cache = (
+        db.query(PerformanceCache)
+        .filter_by(cliente_id=cliente_id, tipo="30dias")
+        .order_by(PerformanceCache.updated_at.desc())
+        .first()
+    )
+    if cache and (datetime.now() - cache.updated_at) < timedelta(minutes=10):
+        print("🔁 Cache 30 dias do banco")
+        return cache.resultado_json
 
-    print("⚙️ Calculando nova performance dos últimos 30 dias...")
+    print("⚙️ Calculando nova performance de 30 dias...")
 
-    resultado_geracao_isolarcloud = {}
-    resultado_geracao_deye = {}
-
+    resultado_geracao = []
     if isolarcloud:
-        try:
-            resultado_geracao_isolarcloud = isolarcloud.get_geracao()
-        except Exception as e:
-            print("⚠️ Erro ao obter geração isolarcloud:", e)
-
+        resultado_geracao += isolarcloud.get_geracao().get("mensal", {}).get("por_usina", [])
     if deye:
-        try:
-            resultado_geracao_deye = deye.get_geracao()
-        except Exception as e:
-            print("⚠️ Erro ao obter geração deye:", e)
+        resultado_geracao += deye.get_geracao().get("mensal", {}).get("por_usina", [])
 
-    geracoes_isolar = resultado_geracao_isolarcloud.get("mensal", {}).get("por_usina", [])
-    geracoes_deye = resultado_geracao_deye.get("mensal", {}).get("por_usina", [])
+    resultados = [
+        calcular_performance_30dias(g["ps_id"], g["energia_gerada_kWh"], db)
+        for g in resultado_geracao
+    ]
 
-    geracoes = geracoes_isolar + geracoes_deye
-    resultados = []
-
-    for g in geracoes:
-        ps_id = g.get("ps_id")
-        energia = g.get("energia_gerada_kWh")
-        if ps_id and energia is not None:
-            resultado = calcular_performance_30dias(ps_id, energia, db, cliente_id)
-            resultados.append(resultado)
-
-    _performance_30dias_cache = resultados
-    _performance_30dias_cache_timestamp = agora
-    print("✅ Performance 30 dias salva em cache")
+    db.add(PerformanceCache(cliente_id=cliente_id, tipo="30dias", resultado_json=resultados))
+    db.commit()
     return resultados
