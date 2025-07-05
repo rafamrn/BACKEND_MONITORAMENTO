@@ -127,13 +127,14 @@ def get_performance_diaria(isolarcloud, deye, db: Session, cliente_id: int):
         resultado_geracao += deye.get_geracao().get("diario", [])
 
     resultados = [
-        calcular_performance_diaria(g["ps_id"], g["energia_gerada_kWh"], db)
+        calcular_performance_diaria(g["ps_id"], g["energia_gerada_kWh"], db, cliente_id)
         for g in resultado_geracao
     ]
 
     db.add(PerformanceCache(cliente_id=cliente_id, tipo="diaria", resultado_json=resultados))
     db.commit()
     return resultados
+
 
 
 
@@ -151,22 +152,23 @@ def get_performance_7dias(isolarcloud, deye, db: Session, cliente_id: int):
         print("🔁 Cache 7 dias do banco")
         return cache.resultado_json
 
-    print("⚙️ Calculando nova performance de 7 dias...")
+    print("⚙️ Calculando nova performance dos últimos 7 dias...")
 
     resultado_geracao = []
     if isolarcloud:
-        resultado_geracao += isolarcloud.get_geracao().get("setedias", [])
+        resultado_geracao += isolarcloud.get_geracao().get("7dias", [])
     if deye:
-        resultado_geracao += deye.get_geracao().get("setedias", [])
+        resultado_geracao += deye.get_geracao().get("7dias", [])
 
     resultados = [
-        calcular_performance_7dias(g["ps_id"], g["energia_gerada_kWh"], db)
+        calcular_performance_7dias(g["ps_id"], g["energia_gerada_kWh"], db, cliente_id)
         for g in resultado_geracao
     ]
 
     db.add(PerformanceCache(cliente_id=cliente_id, tipo="7dias", resultado_json=resultados))
     db.commit()
     return resultados
+
 
 # Obter performance 30 dias
 
@@ -183,16 +185,16 @@ def get_performance_30dias(isolarcloud, deye, db: Session, cliente_id: int):
         print("🔁 Cache 30 dias do banco")
         return cache.resultado_json
 
-    print("⚙️ Calculando nova performance de 30 dias...")
+    print("⚙️ Calculando nova performance dos últimos 30 dias...")
 
     resultado_geracao = []
     if isolarcloud:
-        resultado_geracao += isolarcloud.get_geracao().get("mensal", {}).get("por_usina", [])
+        resultado_geracao += isolarcloud.get_geracao().get("30dias", [])
     if deye:
-        resultado_geracao += deye.get_geracao().get("mensal", {}).get("por_usina", [])
+        resultado_geracao += deye.get_geracao().get("30dias", [])
 
     resultados = [
-        calcular_performance_30dias(g["ps_id"], g["energia_gerada_kWh"], db)
+        calcular_performance_30dias(g["ps_id"], g["energia_gerada_kWh"], db, cliente_id)
         for g in resultado_geracao
     ]
 
