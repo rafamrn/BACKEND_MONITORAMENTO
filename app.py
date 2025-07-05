@@ -137,12 +137,7 @@ def performance_diaria(
     deye_api = None
 
     if integracao_sungrow:
-        sungrow_api = ApiSolarCloud(
-            username=integracao_sungrow.username,
-            password=integracao_sungrow.senha,
-            appkey=integracao_sungrow.appkey,
-            x_access_key=integracao_sungrow.x_access_key
-        )
+        sungrow_api = ApiSolarCloud(db=db, integracao=integracao_sungrow)
 
     if integracao_deye:
         deye_api = ApiDeye(
@@ -163,12 +158,7 @@ def performance_7dias(db: Session = Depends(get_db), usuario_logado: User = Depe
     deye_api = None
 
     if integracao_sungrow:
-        sungrow_api = ApiSolarCloud(
-            username=integracao_sungrow.username,
-            password=integracao_sungrow.senha,
-            appkey=integracao_sungrow.appkey,
-            x_access_key=integracao_sungrow.x_access_key
-        )
+        sungrow_api = ApiSolarCloud(db=db, integracao=integracao_sungrow)
 
     if integracao_deye:
         deye_api = ApiDeye(
@@ -190,13 +180,7 @@ def performance_30dias(
     deye_api = None
 
     if integracao_sungrow:
-        sungrow_api = ApiSolarCloud(
-            username=integracao_sungrow.username,
-            password=integracao_sungrow.senha,
-            appkey=integracao_sungrow.appkey,
-            x_access_key=integracao_sungrow.x_access_key
-        )
-
+        sungrow_api = ApiSolarCloud(db=db, integracao=integracao_sungrow)
     if integracao_deye:
         deye_api = ApiDeye(
             username=integracao_deye.username,

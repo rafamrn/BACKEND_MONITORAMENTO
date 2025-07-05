@@ -36,6 +36,8 @@ class Integracao(Base):
     senha = Column(String, nullable=False)
     x_access_key = Column(String, nullable=True)
     appkey = Column(String, nullable=True)
+    token_acesso = Column(String, nullable=True)
+    token_expira_em = Column(DateTime, nullable=True)
 
     cliente = relationship("User", back_populates="integracoes")
 

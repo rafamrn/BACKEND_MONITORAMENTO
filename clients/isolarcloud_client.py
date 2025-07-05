@@ -7,35 +7,42 @@ from pytz import timezone
 from typing import Optional
 from calendar import monthrange
 from models .codificacoes_sungrow import ponto_legivel
-
+from sqlalchemy.orm import Session
+from modelos import Integracao
 
 class ApiSolarCloud:
-    base_url = "https://gateway.isolarcloud.com.hk/openapi/"
-
-    def __init__(self, username, password, x_access_key=None, appkey=None):
-        self.username = username
-        self.password = password
-        self.appkey = appkey
-        self.x_access_key = x_access_key
-
-        self.headers = {
-            "Content-Type": "application/json",
-            "x-access-key": self.x_access_key,
-            "sys_code": "901"
-        }
-
+    def __init__(self, db: Session, integracao: Integracao):
+        self.db = db
+        self.integracao = integracao
+        self.username = integracao.username
+        self.password = integracao.senha
+        self.appkey = integracao.appkey
+        self.x_access_key = integracao.x_access_key
         self.token = None
-        self.usinas_cache = None
-        self.token_cache = None
-        self.token_timestamp = None
-        self.usinas_timestamp = None
-        self.session = requests.Session()
-        self._geracao_cache = None
-        self._geracao_cache_timestamp = None
-        self.geracao7_cache = None
-        
 
-    def login_solarcloud(self):
+        # Tenta usar token armazenado
+        if integracao.token and integracao.token_updated_at:
+            tempo_expirado = datetime.utcnow() - integracao.token_updated_at
+            if tempo_expirado < timedelta(minutes=50):  # tokens da Sungrow duram ~1h
+                self.token = integracao.token
+                print("✅ Usando token armazenado no banco")
+            else:
+                print("🔄 Token expirado, obtendo novo...")
+                self.token = self._autenticar_e_salvar_token()
+        else:
+            print("🔑 Nenhum token encontrado, obtendo novo...")
+            self.token = self._autenticar_e_salvar_token()
+        
+    def _autenticar_e_salvar_token(self):
+        novo_token = self._obter_token()
+        # Atualiza no banco
+        self.integracao.token = novo_token
+        self.integracao.token_updated_at = datetime.utcnow()
+        self.db.commit()
+        self.db.refresh(self.integracao)
+        return novo_token
+
+    def _obter_token(self):
         if self.token_cache:
             return self.token_cache
 
@@ -83,7 +90,7 @@ class ApiSolarCloud:
 
     def _post_with_auth(self, url, body):
         if not self.token_cache:
-            token = self.login_solarcloud()
+            token = self._obter_token()
             if not token:
                 print("❌ Falha ao obter token.")
                 return None
@@ -96,7 +103,7 @@ class ApiSolarCloud:
         if response.status_code in (401, 403):
             print("⚠️ Token expirado. Renovando...")
             self.token_cache = None
-            token = self.login_solarcloud()
+            token = self._obter_token()
             if not token:
                 print("❌ Falha ao renovar token.")
                 return None
@@ -184,7 +191,7 @@ class ApiSolarCloud:
 
         if period == "day" and date and plant_id:
             if not self.token_cache:
-                self.login_solarcloud()
+                self._obter_token()
 
             if not self.usinas_cache:
                 self.get_usinas()
@@ -202,7 +209,7 @@ class ApiSolarCloud:
                 }
 
         if not self.token_cache:
-            self.login_solarcloud()
+            self._obter_token()
 
         if not self.usinas_cache:
             self.get_usinas()
@@ -223,7 +230,7 @@ class ApiSolarCloud:
                 }
 
         if not self.token_cache:
-            self.login_solarcloud()
+            self._obter_token()
 
         if not self.usinas_cache:
             self.get_usinas()
@@ -405,7 +412,7 @@ class ApiSolarCloud:
         data_dt = datetime.strptime(data, "%Y-%m-%d").replace(tzinfo=brasil)
 
         if not self.token_cache or time.time():
-            self.login_solarcloud()
+            self._obter_token()
 
         if not self.usinas_cache:
             self.get_usinas()
@@ -507,7 +514,7 @@ class ApiSolarCloud:
 
     def get_geracao_mes(self, data: str, ps_key: str = None, plant_id: int = None):
         if not self.token_cache or time.time() - self.token_timestamp > 600:
-            self.login_solarcloud()
+            self._obter_token()
 
         if not self.usinas_cache:
             self.get_usinas()
@@ -587,7 +594,7 @@ class ApiSolarCloud:
     
     def get_geracao_ano(self, ano: str, ps_key: str = None, plant_id: int = None):
         if not self.token_cache or time.time() - self.token_timestamp > 600:
-            self.login_solarcloud()
+            self._obter_token()
 
         if not self.usinas_cache:
             self.get_usinas()
@@ -662,7 +669,7 @@ class ApiSolarCloud:
     def get_dados_tecnicos(self, ps_key: str = None, plant_id: int = 1563706):
 
         if not self.token_cache:
-            self.login_solarcloud()
+            self._obter_token()
 
         if not ps_key:
 
