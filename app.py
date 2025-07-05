@@ -226,6 +226,25 @@ def obter_dados_tecnicos(
     isolarcloud = ApiSolarCloud(db=db, integracao=integracao)
     return isolarcloud.get_dados_tecnicos(plant_id=plant_id)
 
+@app.get("/api/geracao")
+def obter_geracao_diaria(
+    period: str = Query(..., regex="^day$"),
+    date: str = Query(..., regex=r"^\d{4}-\d{2}-\d{2}$"),
+    plant_id: int = Query(...),
+    db: Session = Depends(get_db),
+    usuario_logado: User = Depends(get_current_user)
+):
+    if period != "day":
+        raise HTTPException(status_code=400, detail="Parâmetro 'period' deve ser 'day'")
+
+    integracao = db.query(Integracao).filter_by(cliente_id=usuario_logado.id, plataforma="Sungrow").first()
+    if not integracao:
+        raise HTTPException(status_code=404, detail="Integração da plataforma Sungrow não encontrada")
+
+    isolarcloud = ApiSolarCloud(db=db, integracao=integracao)
+    return isolarcloud.get_geracao(period="day", date=date, plant_id=plant_id)
+
+
 @app.get("/api/geracao/mensal")
 def obter_geracao_mensal(
     date: str = Query(..., regex=r"^\d{4}-\d{2}$"),
