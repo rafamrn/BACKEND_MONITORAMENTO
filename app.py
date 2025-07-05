@@ -218,7 +218,7 @@ def obter_dados_tecnicos(
     db: Session = Depends(get_db),
     usuario_logado: User = Depends(get_current_user)
 ):
-    integracao = db.query(Integracao).filter_by(cliente_id=usuario_logado.id, plataforma="sungrow").first()
+    integracao = db.query(Integracao).filter_by(cliente_id=usuario_logado.id, plataforma="Sungrow").first()
 
     if not integracao:
         raise HTTPException(status_code=404, detail="Integração da plataforma Sungrow não encontrada")
@@ -233,7 +233,7 @@ def obter_geracao_mensal(
     db: Session = Depends(get_db),
     usuario_logado: User = Depends(get_current_user)
 ):
-    integracao = db.query(Integracao).filter_by(cliente_id=usuario_logado.id, plataforma="sungrow").first()
+    integracao = db.query(Integracao).filter_by(cliente_id=usuario_logado.id, plataforma="Sungrow").first()
     if not integracao:
         raise HTTPException(status_code=404, detail="Integração da plataforma Sungrow não encontrada")
 
@@ -247,7 +247,7 @@ def obter_geracao_anual(
     db: Session = Depends(get_db),
     usuario_logado: User = Depends(get_current_user)
 ):
-    integracao = db.query(Integracao).filter_by(cliente_id=usuario_logado.id, plataforma="sungrow").first()
+    integracao = db.query(Integracao).filter_by(cliente_id=usuario_logado.id, plataforma="Sungrow").first()
     if not integracao:
         raise HTTPException(status_code=404, detail="Integração da plataforma Sungrow não encontrada")
 
