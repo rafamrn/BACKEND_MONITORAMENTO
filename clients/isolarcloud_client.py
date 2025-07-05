@@ -10,22 +10,34 @@ from models .codificacoes_sungrow import ponto_legivel
 from sqlalchemy.orm import Session
 from modelos import Integracao
 
+import requests
+import time
+from datetime import datetime, timedelta
+from sqlalchemy.orm import Session
+from modelos import Integracao
+
+
 class ApiSolarCloud:
     base_url = "https://gateway.isolarcloud.com.hk/openapi/"
+
     def __init__(self, db: Session, integracao: Integracao):
         self.db = db
         self.integracao = integracao
+
         self.username = integracao.username
         self.password = integracao.senha
         self.appkey = integracao.appkey
         self.x_access_key = integracao.x_access_key
+
         self.token = integracao.token_acesso
         self.token_expira_em = integracao.token_expira_em
         self.token_updated_at = integracao.token_updated_at
+
         self._geracao_cache_timestamp = None
         self._geracao_cache = None
         self.token_cache = None
         self.usinas_cache = None
+
         self.session = requests.Session()
         self.headers = {
             "Content-Type": "application/json",
@@ -33,34 +45,45 @@ class ApiSolarCloud:
             "sys_code": "901"
         }
 
-        # Tenta usar token armazenado
-        if integracao.token_acesso and integracao.token_updated_at:
-            tempo_expirado = datetime.utcnow() - integracao.token_updated_at
-            if tempo_expirado < timedelta(minutes=50):  # tokens da Sungrow duram ~1h
-                self.token = integracao.token_acesso
+        # ⚠️ Verifica no banco se outro processo atualizou o token antes de gerar novo
+        self.db.refresh(self.integracao)
+
+        if self.integracao.token_acesso and self.integracao.token_updated_at:
+            tempo_expirado = datetime.utcnow() - self.integracao.token_updated_at
+            if tempo_expirado < timedelta(minutes=50):
                 print("✅ Usando token armazenado no banco")
+                self.token = self.integracao.token_acesso
+                self.token_cache = self.token
             else:
-                print("🔄 Token expirado, obtendo novo...")
+                print("🔄 Token expirado, verificando necessidade de renovação...")
                 self.token = self._autenticar_e_salvar_token()
         else:
             print("🔑 Nenhum token encontrado, obtendo novo...")
             self.token = self._autenticar_e_salvar_token()
-        
+
     def _autenticar_e_salvar_token(self):
+        # Verifica novamente se já foi atualizado por outro processo
+        self.db.refresh(self.integracao)
+        if self.integracao.token_acesso and self.integracao.token_updated_at:
+            tempo_expirado = datetime.utcnow() - self.integracao.token_updated_at
+            if tempo_expirado < timedelta(minutes=50):
+                print("♻️ Outro processo já atualizou o token.")
+                return self.integracao.token_acesso
+
         novo_token = self._obter_token()
-        # Atualiza no banco
+        if not novo_token:
+            raise Exception("❌ Falha ao obter novo token da API Sungrow.")
+
         self.integracao.token_acesso = novo_token
         self.integracao.token_updated_at = datetime.utcnow()
+
+        self.db.add(self.integracao)
         self.db.commit()
         self.db.refresh(self.integracao)
+
         return novo_token
 
     def _obter_token(self):
-        if self.token and self.token_expira_em and self.token_expira_em > datetime.utcnow():
-            print("✅ Usando token válido salvo no banco")
-            return self.token
-            return self.token_cache
-
         url = self.base_url + "login"
         body = {
             "appkey": self.appkey,
@@ -82,12 +105,6 @@ class ApiSolarCloud:
             dados = response.json()
         except Exception as e:
             print("❌ Erro ao decodificar JSON da resposta de login:", e)
-            print("Resposta bruta:", response.text)
-            return None
-
-        # ✅ AQUI está o ponto crítico corrigido
-        if not dados or not isinstance(dados, dict):
-            print("❌ Resposta de login inválida:", dados)
             return None
 
         result_data = dados.get("result_data")
@@ -97,20 +114,18 @@ class ApiSolarCloud:
 
         self.token = result_data["token"]
         self.token_cache = self.token
-        self.token_timestamp = time.time()
         print("✅ Novo token SUNGROW obtido:", self.token)
         return self.token
 
-
-
     def _post_with_auth(self, url, body):
-        if not self.token_cache:
+        token = self.token_cache or self.token
+        if not token:
+            print("⚠️ Nenhum token disponível, tentando obter novo...")
             token = self._obter_token()
             if not token:
                 print("❌ Falha ao obter token.")
                 return None
-        else:
-            token = self.token_cache
+            self.token_cache = token
 
         body["token"] = token
         response = self.session.post(url, json=body, headers=self.headers)
@@ -126,6 +141,7 @@ class ApiSolarCloud:
             response = self.session.post(url, json=body, headers=self.headers)
 
         return response
+
 
     def get_usinas(self):
         if self.usinas_cache and (time.time() - getattr(self, "usinas_timestamp", 0)) < 300:
