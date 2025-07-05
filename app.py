@@ -59,7 +59,6 @@ if os.getenv("ENV") == "production":
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
 
 # ============== ⬇ CLIENTES DAS APIS ==============
-isolarcloud = ApiSolarCloud(settings.ISOLAR_USER, settings.ISOLAR_PASS)
 huawei = ApiHuawei(settings.HUAWEI_USER, settings.HUAWEI_PASS)
 deye = ApiDeye(settings.DEYE_USER, settings.DEYE_PASS, settings.DEYE_APPID, settings.DEYE_APPSECRET)
 
