@@ -236,7 +236,7 @@ class ApiSolarCloud:
                 print("🔁 Retornando geração do cache diário")
                 return {
                     "diario": self._geracao_cache,
-                    "setedias": self.geracao7_cache or []
+                    "7dias": self.geracao7_cache or []
                 }
 
         if not self.token_cache:
@@ -257,7 +257,7 @@ class ApiSolarCloud:
                 print("🔁 Retornando geração do cache diário")
                 return {
                     "diario": self._geracao_cache,
-                    "setedias": self.geracao7_cache or []
+                    "7dias": self.geracao7_cache or []
                 }
 
         if not self.token_cache:
@@ -418,8 +418,8 @@ class ApiSolarCloud:
         print("✅ Geração salva em cache")
         return {
             "diario": ps_daily_energy,
-            "setedias": ps_7dias_energy,
-            "mensal": {
+            "7dias": ps_7dias_energy,
+            "30dias": {
                 "total": round(total_30dias, 2),
                 "por_usina": ps_30dias_energy
             }
@@ -619,7 +619,7 @@ class ApiSolarCloud:
         soma_total = sum([item["production"] for item in resultado])
 
         return {
-            "mensal": resultado,
+            "30dias": resultado,
             "total": round(soma_total, 2)
         }
     
