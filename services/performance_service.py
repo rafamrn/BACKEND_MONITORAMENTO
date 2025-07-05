@@ -115,7 +115,7 @@ def get_performance_diaria(isolarcloud, deye, db: Session, cliente_id: int):
         .order_by(PerformanceCache.updated_at.desc())
         .first()
     )
-    if cache and (datetime.now() - cache.updated_at) < timedelta(minutes=5):
+    if cache and (datetime.now() - cache.updated_at) < timedelta(hours=23):
         print("🔁 Cache diária do banco")
         return cache.resultado_json
 
@@ -182,7 +182,7 @@ def get_performance_30dias(isolarcloud, deye, db: Session, cliente_id: int):
         .order_by(PerformanceCache.updated_at.desc())
         .first()
     )
-    if cache and (datetime.now() - cache.updated_at) < timedelta(minutes=10):
+    if cache and (datetime.now() - cache.updated_at) < timedelta(hours=23):
         print("🔁 Cache 30 dias do banco")
         return cache.resultado_json
 
