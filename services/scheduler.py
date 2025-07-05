@@ -4,30 +4,38 @@ from services.performance_service import (
     get_performance_7dias,
     get_performance_30dias
 )
-from dependencies import get_db
 from database import SessionLocal
-from utils import get_api_instance
-import time
+from integracoes.solarcloud_service import get_api_instance
+import logging
+
+# Configura logging em vez de prints (melhor para produção)
+logger = logging.getLogger("scheduler")
+logger.setLevel(logging.INFO)
 
 def executar_rotina_1h():
-    print("🕐 Executando cálculo de performance diária às 01h...")
+    logger.info("🕐 Executando cálculo de performance às 01h...")
     db = SessionLocal()
-    clientes = db.execute("SELECT id FROM users").fetchall()
-    
-    for cliente in clientes:
-        cliente_id = cliente[0]
-        try:
-            sungrow = get_api_instance(db, cliente_id)
-            deye = None  # adapte se necessário
-            get_performance_diaria(sungrow, deye, db, cliente_id)
-            get_performance_7dias(sungrow, deye, db, cliente_id)
-            get_performance_30dias(sungrow, deye, db, cliente_id)
-            print(f"✅ Performance atualizada para cliente {cliente_id}")
-        except Exception as e:
-            print(f"❌ Erro ao calcular performance para cliente {cliente_id}: {e}")
-    
-    db.close()
 
-scheduler = BackgroundScheduler()
-scheduler.add_job(executar_rotina_1h, 'cron', hour=1, minute=0)  # 01:00 da manhã
-scheduler.start()
+    try:
+        clientes = db.execute("SELECT id FROM users").fetchall()
+        for cliente in clientes:
+            cliente_id = cliente[0]
+            try:
+                sungrow = get_api_instance(db, cliente_id)
+                deye = None  # adapte para outras plataformas
+                get_performance_diaria(sungrow, deye, db, cliente_id)
+                get_performance_7dias(sungrow, deye, db, cliente_id)
+                get_performance_30dias(sungrow, deye, db, cliente_id)
+                logger.info(f"✅ Performance atualizada para cliente {cliente_id}")
+            except Exception as e:
+                logger.error(f"❌ Erro ao calcular performance para cliente {cliente_id}: {e}")
+    except Exception as e:
+        logger.error(f"❌ Erro geral na rotina de performance: {e}")
+    finally:
+        db.close()
+
+def start_scheduler():
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(executar_rotina_1h, 'cron', hour=1, minute=0)
+    scheduler.start()
+    logger.info("✅ Scheduler iniciado com rotina diária às 01h")
