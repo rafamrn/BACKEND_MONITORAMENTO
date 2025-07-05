@@ -21,7 +21,17 @@ class ApiSolarCloud:
         self.x_access_key = integracao.x_access_key
         self.token = integracao.token_acesso
         self.token_expira_em = integracao.token_expira_em
+        self.token_updated_at = integracao.token_updated_at
+        self._geracao_cache_timestamp = None
+        self._geracao_cache = None
+        self.token_cache = None
         self.usinas_cache = None
+        self.session = requests.Session()
+        self.headers = {
+            "Content-Type": "application/json",
+            "x-access-key": self.x_access_key,
+            "sys_code": "901"
+        }
 
         # Tenta usar token armazenado
         if integracao.token_acesso and integracao.token_updated_at:
