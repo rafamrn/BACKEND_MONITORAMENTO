@@ -6,7 +6,11 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.security import OAuth2PasswordRequestForm
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from utils import get_integracao_por_plataforma
-from services.performance_service import calcular_performance_diaria, calcular_performance_7dias, calcular_performance_30dias
+from services.performance_service import (
+    get_performance_diaria,
+    get_performance_7dias,
+    get_performance_30dias
+)
 from clients.isolarcloud_client import ApiSolarCloud
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, date
@@ -37,6 +41,7 @@ from routers import projection
 from routes import convites
 from rotas import solarcloud_routes
 from passlib.hash import bcrypt
+from clients.isolarcloud_client import ApiSolarCloud
 
 # ============== ⬇ APP ==============
 app = FastAPI()
@@ -103,16 +108,32 @@ def listar_usinas(usuario_logado: User = Depends(get_current_user), db: Session 
 
 
 @app.get("/geracoes_diarias")
-def listar_geracoes_diarias():
+def listar_geracoes_diarias(
+    db: Session = Depends(get_db),
+    usuario_logado: User = Depends(get_current_user)
+):
     geracoes = []
 
     try:
-        geracoes += isolarcloud.get_geracao()
+        integracao_solar = get_integracao_por_plataforma(db, usuario_logado.id, "Sungrow")
+        if integracao_solar:
+            isolarcloud = ApiSolarCloud(db=db, integracao=integracao_solar)
+            geracoes += isolarcloud.get_geracao().get("diario", [])
+        else:
+            print("⚠️ Integração Sungrow não encontrada")
     except Exception as e:
         print("⚠️ Erro ao obter geração da iSolarCloud:", str(e))
 
     try:
-        geracoes += deye.get_geracao()
+        integracao_deye = get_integracao_por_plataforma(db, usuario_logado.id, "deye")
+        if integracao_deye:
+            deye = ApiDeye(
+                username=integracao_deye.username,
+                password=integracao_deye.senha
+            )
+            geracoes += deye.get_geracao().get("diario", [])
+        else:
+            print("⚠️ Integração Deye não encontrada")
     except Exception as e:
         print("⚠️ Erro ao obter geração da Deye:", str(e))
 

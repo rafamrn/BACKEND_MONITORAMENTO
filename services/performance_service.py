@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import calendar
 from models.performance_cache import PerformanceCache
 
+
 # Cache global
 _performance_diaria_cache = None
 _performance_diaria_cache_timestamp = None
