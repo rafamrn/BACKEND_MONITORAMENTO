@@ -213,19 +213,39 @@ def performance_30dias(
 
 
 @app.get("/dados_tecnicos")
-def obter_dados_tecnicos(plant_id: int = Query(...), usuario_logado: User = Depends(get_current_user)):
+def obter_dados_tecnicos(plant_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    isolarcloud = ApiSolarCloud(db=db, user=user)
     return isolarcloud.get_dados_tecnicos(plant_id=plant_id)
 
 @app.get("/api/geracao")
-def obter_geracao(period: str = Query(..., regex="^(day|month|year)$"), date: str = Query(...), plant_id: int = Query(...), usuario_logado: User = Depends(get_current_user)):
+def obter_geracao(
+    period: str = Query(..., regex="^(day|month|year)$"),
+    date: str = Query(...),
+    plant_id: int = Query(...),
+    db: Session = Depends(get_db),
+    usuario_logado: User = Depends(get_current_user)
+):
+    isolarcloud = ApiSolarCloud(db=db, user=usuario_logado)
     return isolarcloud.get_geracao(period=period, date=date, plant_id=plant_id)
 
 @app.get("/api/geracao/mensal")
-def obter_geracao_mensal(date: str = Query(..., regex=r"^\d{4}-\d{2}$"), plant_id: int = Query(...), usuario_logado: User = Depends(get_current_user)):
+def obter_geracao_mensal(
+    date: str = Query(..., regex=r"^\d{4}-\d{2}$"),
+    plant_id: int = Query(...),
+    db: Session = Depends(get_db),
+    usuario_logado: User = Depends(get_current_user)
+):
+    isolarcloud = ApiSolarCloud(db=db, user=usuario_logado)
     return isolarcloud.get_geracao_mes(data=date, plant_id=plant_id)
 
 @app.get("/api/geracao/anual")
-def obter_geracao_anual(year: str = Query(..., regex=r"^\d{4}$"), plant_id: int = Query(...), usuario_logado: User = Depends(get_current_user)):
+def obter_geracao_anual(
+    year: str = Query(..., regex=r"^\d{4}$"),
+    plant_id: int = Query(...),
+    db: Session = Depends(get_db),
+    usuario_logado: User = Depends(get_current_user)
+):
+    isolarcloud = ApiSolarCloud(db=db, user=usuario_logado)
     return isolarcloud.get_geracao_ano(ano=year, plant_id=plant_id)
 
 @app.get("/protegido")
