@@ -25,11 +25,7 @@ def calcular_performance_diaria(plant_id: int, energia_gerada: float, db: Sessio
     ).first()
 
     if not projecao or projecao.projection_kwh == 0:
-        return {
-            "plant_id": plant_id,
-            "performance": None,
-            "mensagem": "Projeção mensal não encontrada ou igual a 0"
-        }
+        return {"plant_id": plant_id, "performance": None, "mensagem": "Sem projeção"}
 
     dias_do_mes = calendar.monthrange(ano, mes)[1]
     media_diaria = projecao.projection_kwh / dias_do_mes
@@ -60,11 +56,7 @@ def calcular_performance_7dias(plant_id: int, energia_gerada: float, db: Session
     ).first()
 
     if not projecao or projecao.projection_kwh == 0:
-        return {
-            "plant_id": plant_id,
-            "performance": None,
-            "mensagem": "Projeção mensal não encontrada ou igual a 0"
-        }
+        return {"plant_id": plant_id, "performance": None, "mensagem": "Sem projeção"}
 
     dias_do_mes = calendar.monthrange(ano, mes)[1]
     media_diaria = projecao.projection_kwh / dias_do_mes
@@ -81,6 +73,7 @@ def calcular_performance_7dias(plant_id: int, energia_gerada: float, db: Session
         "performance_percentual": round(performance * 100)
     }
 
+
 # Performance 30 dias
 def calcular_performance_30dias(plant_id: int, energia_gerada: float, db: Session, cliente_id: int):
     hoje = datetime.now()
@@ -95,11 +88,7 @@ def calcular_performance_30dias(plant_id: int, energia_gerada: float, db: Sessio
     ).first()
 
     if not projecao or projecao.projection_kwh == 0:
-        return {
-            "plant_id": plant_id,
-            "performance": None,
-            "mensagem": "Projeção mensal não encontrada ou igual a 0"
-        }
+        return {"plant_id": plant_id, "performance": None, "mensagem": "Sem projeção"}
 
     dias_do_mes = calendar.monthrange(ano, mes)[1]
     performance = energia_gerada / projecao.projection_kwh
@@ -113,6 +102,7 @@ def calcular_performance_30dias(plant_id: int, energia_gerada: float, db: Sessio
         "performance_percentual": round(performance * 100)
     }
 
+
 # Obter performance diária
 def get_performance_diaria(isolarcloud, deye, db: Session, cliente_id: int):
     global _performance_diaria_cache, _performance_diaria_cache_timestamp
@@ -125,21 +115,24 @@ def get_performance_diaria(isolarcloud, deye, db: Session, cliente_id: int):
 
     print("⚙️ Calculando nova performance diária...")
 
-    geracoes = []
+    resultado_geracao_isolarcloud = {}
+    resultado_geracao_deye = {}
 
-    try:
-        if isolarcloud:
-            geracoes += isolarcloud.get_geracao().get("diario", [])
-    except Exception as e:
-        print("⚠️ Erro ao buscar geração da Sungrow (diária):", e)
+    if isolarcloud:
+        try:
+            resultado_geracao_isolarcloud = isolarcloud.get_geracao()
+        except Exception as e:
+            print("⚠️ Erro ao obter geração isolarcloud:", e)
 
-    try:
-        if deye:
-            geracoes += deye.get_geracao().get("diario", [])
-    except Exception as e:
-        print("⚠️ Erro ao buscar geração da Deye (diária):", e)
+    if deye:
+        try:
+            resultado_geracao_deye = deye.get_geracao()
+        except Exception as e:
+            print("⚠️ Erro ao obter geração deye:", e)
 
+    geracoes = resultado_geracao_isolarcloud.get("diario", []) + resultado_geracao_deye.get("diario", [])
     resultados = []
+
     for g in geracoes:
         ps_id = g.get("ps_id")
         energia = g.get("energia_gerada_kWh")
@@ -151,6 +144,7 @@ def get_performance_diaria(isolarcloud, deye, db: Session, cliente_id: int):
     _performance_diaria_cache_timestamp = agora
     print("✅ Performance diária salva em cache")
     return resultados
+
 
 
 # Obter performance 7 dias
@@ -165,13 +159,20 @@ def get_performance_7dias(isolarcloud, deye, db: Session, cliente_id: int):
 
     print("⚙️ Calculando nova performance dos últimos 7 dias...")
 
-    resultado_geracao_isolarcloud = isolarcloud.get_geracao()
-    resultado_geracao_deye = []
-    if deye:
-        resultado_geracao_deye = deye.get_geracao().get("7dias", [])
+    resultado_geracao_isolarcloud = {}
+    resultado_geracao_deye = {}
 
-    if not isinstance(resultado_geracao_isolarcloud, dict) or not isinstance(resultado_geracao_deye, dict):
-        raise ValueError("⚠️ Erro: get_geracao() deve retornar dicionários válidos.")
+    if isolarcloud:
+        try:
+            resultado_geracao_isolarcloud = isolarcloud.get_geracao()
+        except Exception as e:
+            print("⚠️ Erro ao obter geração isolarcloud:", e)
+
+    if deye:
+        try:
+            resultado_geracao_deye = deye.get_geracao()
+        except Exception as e:
+            print("⚠️ Erro ao obter geração deye:", e)
 
     geracoes = resultado_geracao_isolarcloud.get("setedias", []) + resultado_geracao_deye.get("setedias", [])
     resultados = []
@@ -185,8 +186,9 @@ def get_performance_7dias(isolarcloud, deye, db: Session, cliente_id: int):
 
     _performance_7dias_cache = resultados
     _performance_7dias_cache_timestamp = agora
-    print("✅ Performance de 7 dias salva em cache")
+    print("✅ Performance 7 dias salva em cache")
     return resultados
+
 
 
 
@@ -202,13 +204,20 @@ def get_performance_30dias(isolarcloud, deye, db: Session, cliente_id: int):
 
     print("⚙️ Calculando nova performance dos últimos 30 dias...")
 
-    resultado_geracao_isolarcloud = isolarcloud.get_geracao()
-    resultado_geracao_deye = []
-    if deye:
-        resultado_geracao_deye = deye.get_geracao().get("7dias", [])
+    resultado_geracao_isolarcloud = {}
+    resultado_geracao_deye = {}
 
-    if not isinstance(resultado_geracao_isolarcloud, dict) or not isinstance(resultado_geracao_deye, dict):
-        raise ValueError("⚠️ Erro: get_geracao() deve retornar dicionários com a chave 'mensal'.")
+    if isolarcloud:
+        try:
+            resultado_geracao_isolarcloud = isolarcloud.get_geracao()
+        except Exception as e:
+            print("⚠️ Erro ao obter geração isolarcloud:", e)
+
+    if deye:
+        try:
+            resultado_geracao_deye = deye.get_geracao()
+        except Exception as e:
+            print("⚠️ Erro ao obter geração deye:", e)
 
     geracoes_isolar = resultado_geracao_isolarcloud.get("mensal", {}).get("por_usina", [])
     geracoes_deye = resultado_geracao_deye.get("mensal", {}).get("por_usina", [])
@@ -225,9 +234,5 @@ def get_performance_30dias(isolarcloud, deye, db: Session, cliente_id: int):
 
     _performance_30dias_cache = resultados
     _performance_30dias_cache_timestamp = agora
-    print("✅ Performance de 30 dias salva em cache")
+    print("✅ Performance 30 dias salva em cache")
     return resultados
-
-
-
-
