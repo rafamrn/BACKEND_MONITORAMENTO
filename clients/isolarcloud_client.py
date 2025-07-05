@@ -19,7 +19,9 @@ class ApiSolarCloud:
         self.password = integracao.senha
         self.appkey = integracao.appkey
         self.x_access_key = integracao.x_access_key
-        self.token = None
+        self.token = integracao.token
+        self.token_expira_em = integracao.token_expira_em
+        self.usinas_cache = None
 
         # Tenta usar token armazenado
         if integracao.token and integracao.token_updated_at:
