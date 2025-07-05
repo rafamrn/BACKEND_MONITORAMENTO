@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from modelos import Integracao
 
 class ApiSolarCloud:
+    base_url = "https://gateway.isolarcloud.com.hk/openapi/"
     def __init__(self, db: Session, integracao: Integracao):
         self.db = db
         self.integracao = integracao
