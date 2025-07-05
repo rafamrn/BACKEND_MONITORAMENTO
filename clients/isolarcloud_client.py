@@ -19,15 +19,15 @@ class ApiSolarCloud:
         self.password = integracao.senha
         self.appkey = integracao.appkey
         self.x_access_key = integracao.x_access_key
-        self.token = integracao.token
+        self.token = integracao.token_acesso
         self.token_expira_em = integracao.token_expira_em
         self.usinas_cache = None
 
         # Tenta usar token armazenado
-        if integracao.token and integracao.token_updated_at:
+        if integracao.token_acesso and integracao.token_updated_at:
             tempo_expirado = datetime.utcnow() - integracao.token_updated_at
             if tempo_expirado < timedelta(minutes=50):  # tokens da Sungrow duram ~1h
-                self.token = integracao.token
+                self.token = integracao.token_acesso
                 print("✅ Usando token armazenado no banco")
             else:
                 print("🔄 Token expirado, obtendo novo...")
@@ -39,7 +39,7 @@ class ApiSolarCloud:
     def _autenticar_e_salvar_token(self):
         novo_token = self._obter_token()
         # Atualiza no banco
-        self.integracao.token = novo_token
+        self.integracao.token_acesso = novo_token
         self.integracao.token_updated_at = datetime.utcnow()
         self.db.commit()
         self.db.refresh(self.integracao)
