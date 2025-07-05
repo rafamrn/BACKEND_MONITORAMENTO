@@ -190,7 +190,7 @@ def get_performance_30dias(isolarcloud, deye, db: Session, cliente_id: int):
 
     resultado_geracao = []
     if isolarcloud:
-        resultado_geracao += isolarcloud.get_geracao().get("30dias", [])
+        resultado_geracao += isolarcloud.get_geracao().get("30dias", {}).get("por_usina", [])
     if deye:
         resultado_geracao += deye.get_geracao().get("30dias", [])
 
