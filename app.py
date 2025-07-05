@@ -90,12 +90,7 @@ def listar_usinas(usuario_logado: User = Depends(get_current_user), db: Session 
         integracao_solar = get_integracao_por_plataforma(db, usuario_logado.id, "Sungrow")
         print("🔁 Resultado:", integracao_solar)
         if integracao_solar:
-            isolarcloud = ApiSolarCloud(
-                username=integracao_solar.username,
-                password=integracao_solar.senha,
-                appkey=integracao_solar.appkey,
-                x_access_key=integracao_solar.x_access_key
-            )
+            isolarcloud = ApiSolarCloud(db=db, integracao=integracao_solar)
             usinas += isolarcloud.get_usinas()
         else:
             print("⚠️ Integração Sungrow não encontrada para o cliente.")
