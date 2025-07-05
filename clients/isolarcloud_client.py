@@ -46,7 +46,9 @@ class ApiSolarCloud:
         return novo_token
 
     def _obter_token(self):
-        if self.token_cache:
+        if self.token and self.token_expira_em and self.token_expira_em > datetime.utcnow():
+            print("✅ Usando token válido salvo no banco")
+            return self.token
             return self.token_cache
 
         url = self.base_url + "login"
