@@ -21,6 +21,7 @@ class ApiSolarCloud:
     base_url = "https://gateway.isolarcloud.com.hk/openapi/"
 
     def __init__(self, db: Session, integracao: Integracao):
+        self.db = db
         self.integracao = integracao
 
         self.username = integracao.username
