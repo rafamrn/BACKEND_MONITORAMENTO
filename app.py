@@ -213,20 +213,18 @@ def performance_30dias(
 
 
 @app.get("/dados_tecnicos")
-def obter_dados_tecnicos(plant_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    isolarcloud = ApiSolarCloud(db=db, user=user)
-    return isolarcloud.get_dados_tecnicos(plant_id=plant_id)
-
-@app.get("/api/geracao")
-def obter_geracao(
-    period: str = Query(..., regex="^(day|month|year)$"),
-    date: str = Query(...),
-    plant_id: int = Query(...),
+def obter_dados_tecnicos(
+    plant_id: int,
     db: Session = Depends(get_db),
     usuario_logado: User = Depends(get_current_user)
 ):
-    isolarcloud = ApiSolarCloud(db=db, user=usuario_logado)
-    return isolarcloud.get_geracao(period=period, date=date, plant_id=plant_id)
+    integracao = db.query(Integracao).filter_by(cliente_id=usuario_logado.id, plataforma="sungrow").first()
+
+    if not integracao:
+        raise HTTPException(status_code=404, detail="Integração da plataforma Sungrow não encontrada")
+
+    isolarcloud = ApiSolarCloud(db=db, integracao=integracao)
+    return isolarcloud.get_dados_tecnicos(plant_id=plant_id)
 
 @app.get("/api/geracao/mensal")
 def obter_geracao_mensal(
@@ -235,7 +233,11 @@ def obter_geracao_mensal(
     db: Session = Depends(get_db),
     usuario_logado: User = Depends(get_current_user)
 ):
-    isolarcloud = ApiSolarCloud(db=db, user=usuario_logado)
+    integracao = db.query(Integracao).filter_by(cliente_id=usuario_logado.id, plataforma="sungrow").first()
+    if not integracao:
+        raise HTTPException(status_code=404, detail="Integração da plataforma Sungrow não encontrada")
+
+    isolarcloud = ApiSolarCloud(db=db, integracao=integracao)
     return isolarcloud.get_geracao_mes(data=date, plant_id=plant_id)
 
 @app.get("/api/geracao/anual")
@@ -245,7 +247,11 @@ def obter_geracao_anual(
     db: Session = Depends(get_db),
     usuario_logado: User = Depends(get_current_user)
 ):
-    isolarcloud = ApiSolarCloud(db=db, user=usuario_logado)
+    integracao = db.query(Integracao).filter_by(cliente_id=usuario_logado.id, plataforma="sungrow").first()
+    if not integracao:
+        raise HTTPException(status_code=404, detail="Integração da plataforma Sungrow não encontrada")
+
+    isolarcloud = ApiSolarCloud(db=db, integracao=integracao)
     return isolarcloud.get_geracao_ano(ano=year, plant_id=plant_id)
 
 @app.get("/protegido")
