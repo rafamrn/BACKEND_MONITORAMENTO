@@ -106,6 +106,8 @@ def calcular_performance_30dias(plant_id: int, energia_gerada: float, db: Sessio
 
 # Obter performance diária
 def get_performance_diaria(isolarcloud, deye, db: Session, cliente_id: int):
+    from models.performance_cache import PerformanceCache
+
     cache = (
         db.query(PerformanceCache)
         .filter_by(cliente_id=cliente_id, tipo="diaria")
@@ -114,36 +116,32 @@ def get_performance_diaria(isolarcloud, deye, db: Session, cliente_id: int):
     )
     if cache and (datetime.now() - cache.updated_at) < timedelta(minutes=5):
         print("🔁 Cache diária do banco")
-        resultados = cache.resultado_json
-    else:
-        print("⚙️ Calculando nova performance diária...")
+        return cache.resultado_json
 
-        resultado_geracao = []
-        if isolarcloud:
-            resultado_geracao += isolarcloud.get_geracao().get("diario", [])
-        if deye:
-            resultado_geracao += deye.get_geracao().get("diario", [])
+    print("⚙️ Calculando nova performance diária...")
 
-        resultados = [
-            calcular_performance_diaria(g["ps_id"], g["energia_gerada_kWh"], db, cliente_id)
-            for g in resultado_geracao
-        ]
+    resultado_geracao = []
+    if isolarcloud:
+        resultado_geracao += isolarcloud.get_geracao().get("diario", [])
+    if deye:
+        resultado_geracao += deye.get_geracao().get("diario", [])
 
-        db.add(PerformanceCache(cliente_id=cliente_id, tipo="diaria", resultado_json=resultados))
-        db.commit()
+    resultados = [
+        calcular_performance_diaria(g["ps_id"], g["energia_gerada_kWh"], db, cliente_id)
+        for g in resultado_geracao
+    ]
 
-    performances = [r["performance_percentual"] for r in resultados if r.get("performance_percentual") is not None]
-
-    media = round(sum(performances) / len(performances), 2) if performances else None
-
-    return {"performance": media}
-
+    db.add(PerformanceCache(cliente_id=cliente_id, tipo="diaria", resultado_json=resultados))
+    db.commit()
+    return resultados
 
 
 
 
 # Obter performance 7 dias
 def get_performance_7dias(isolarcloud, deye, db: Session, cliente_id: int):
+    from models.performance_cache import PerformanceCache
+
     cache = (
         db.query(PerformanceCache)
         .filter_by(cliente_id=cliente_id, tipo="7dias")
@@ -152,33 +150,31 @@ def get_performance_7dias(isolarcloud, deye, db: Session, cliente_id: int):
     )
     if cache and (datetime.now() - cache.updated_at) < timedelta(minutes=10):
         print("🔁 Cache 7 dias do banco")
-        resultados = cache.resultado_json
-    else:
-        print("⚙️ Calculando nova performance dos últimos 7 dias...")
+        return cache.resultado_json
 
-        resultado_geracao = []
-        if isolarcloud:
-            resultado_geracao += isolarcloud.get_geracao().get("7dias", [])
-        if deye:
-            resultado_geracao += deye.get_geracao().get("7dias", [])
+    print("⚙️ Calculando nova performance dos últimos 7 dias...")
 
-        resultados = [
-            calcular_performance_7dias(g["ps_id"], g["energia_gerada_kWh"], db, cliente_id)
-            for g in resultado_geracao
-        ]
+    resultado_geracao = []
+    if isolarcloud:
+        resultado_geracao += isolarcloud.get_geracao().get("7dias", [])
+    if deye:
+        resultado_geracao += deye.get_geracao().get("7dias", [])
 
-        db.add(PerformanceCache(cliente_id=cliente_id, tipo="7dias", resultado_json=resultados))
-        db.commit()
+    resultados = [
+        calcular_performance_7dias(g["ps_id"], g["energia_gerada_kWh"], db, cliente_id)
+        for g in resultado_geracao
+    ]
 
-    performances = [r["performance_percentual"] for r in resultados if r.get("performance_percentual") is not None]
-    media = round(sum(performances) / len(performances), 2) if performances else None
-
-    return {"performance": media}
+    db.add(PerformanceCache(cliente_id=cliente_id, tipo="7dias", resultado_json=resultados))
+    db.commit()
+    return resultados
 
 
 # Obter performance 30 dias
 
 def get_performance_30dias(isolarcloud, deye, db: Session, cliente_id: int):
+    from models.performance_cache import PerformanceCache
+
     cache = (
         db.query(PerformanceCache)
         .filter_by(cliente_id=cliente_id, tipo="30dias")
@@ -187,25 +183,21 @@ def get_performance_30dias(isolarcloud, deye, db: Session, cliente_id: int):
     )
     if cache and (datetime.now() - cache.updated_at) < timedelta(minutes=10):
         print("🔁 Cache 30 dias do banco")
-        resultados = cache.resultado_json
-    else:
-        print("⚙️ Calculando nova performance dos últimos 30 dias...")
+        return cache.resultado_json
 
-        resultado_geracao = []
-        if isolarcloud:
-            resultado_geracao += isolarcloud.get_geracao().get("30dias", [])
-        if deye:
-            resultado_geracao += deye.get_geracao().get("30dias", [])
+    print("⚙️ Calculando nova performance dos últimos 30 dias...")
 
-        resultados = [
-            calcular_performance_30dias(g["ps_id"], g["energia_gerada_kWh"], db, cliente_id)
-            for g in resultado_geracao
-        ]
+    resultado_geracao = []
+    if isolarcloud:
+        resultado_geracao += isolarcloud.get_geracao().get("30dias", [])
+    if deye:
+        resultado_geracao += deye.get_geracao().get("30dias", [])
 
-        db.add(PerformanceCache(cliente_id=cliente_id, tipo="30dias", resultado_json=resultados))
-        db.commit()
+    resultados = [
+        calcular_performance_30dias(g["ps_id"], g["energia_gerada_kWh"], db, cliente_id)
+        for g in resultado_geracao
+    ]
 
-    performances = [r["performance_percentual"] for r in resultados if r.get("performance_percentual") is not None]
-    media = round(sum(performances) / len(performances), 2) if performances else None
-
-    return {"performance": media}
+    db.add(PerformanceCache(cliente_id=cliente_id, tipo="30dias", resultado_json=resultados))
+    db.commit()
+    return resultados
