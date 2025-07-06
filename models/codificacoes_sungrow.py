@@ -1,4 +1,8 @@
 ponto_legivel = {
+
+    # Potência Ativa (W)
+    "p24": "active_power",
+
     # MPPT Voltages
     "p5": "tensao_mppt_1",
     "p7": "tensao_mppt_2",
