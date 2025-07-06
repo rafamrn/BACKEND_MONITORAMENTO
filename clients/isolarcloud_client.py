@@ -697,7 +697,7 @@ class ApiSolarCloud:
         }
 
 
-    def get_dados_tecnicos(self, ps_key: str = None, plant_id: int = 1563706):
+    def get_dados_tecnicos(self, ps_key: Optional[str] = None, plant_id: Optional[int] = None):
 
         if not self.token_cache:
             self._obter_token()

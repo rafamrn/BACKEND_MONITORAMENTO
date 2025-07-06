@@ -44,8 +44,6 @@ from passlib.hash import bcrypt
 from clients.isolarcloud_client import ApiSolarCloud
 from services.scheduler import start_scheduler
 
-
-
 # ============== ⬇ APP ==============
 app = FastAPI()
 
