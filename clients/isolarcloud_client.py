@@ -753,3 +753,59 @@ class ApiSolarCloud:
         ]
         return {
             "dados": device_points_legiveis}
+    
+    def get_alarmes_atuais(self, plant_id: int):
+        if not self.token_cache:
+            self._obter_token()
+
+        if not self.usinas_cache:
+            self.get_usinas()
+
+        url = self.base_url + "getFaultAlarmInfo"
+
+        body = {
+            "token": self.token_cache,
+            "appkey": self.appkey,
+            "ps_id": plant_id,
+            "fault_type": "1,2,3,4",
+            "fault_level": "1,2,3,4",
+            "curPage": 1,
+            "size": 100,
+            "share_type": "0,1,2",
+            "process_status": "8",  # Apenas alarmes atuais
+            "lang": "_pt_BR"
+        }
+
+        res = self._post_with_auth(url, body)
+        res_json = res.json()
+
+        alarmes = res_json.get("result_data", {}).get("pageList", [])
+        return {"alarmes_atuais": alarmes}
+
+    def get_alarmes_historico(self, plant_id: int):
+        if not self.token_cache:
+            self._obter_token()
+
+        if not self.usinas_cache:
+            self.get_usinas()
+
+        url = self.base_url + "getFaultAlarmInfo"
+
+        body = {
+            "token": self.token_cache,
+            "appkey": self.appkey,
+            "ps_id": plant_id,
+            "fault_type": "1,2,3,4",
+            "fault_level": "1,2,3,4",
+            "curPage": 1,
+            "size": 100,
+            "share_type": "0,1,2",
+            "process_status": "9",  # resolved
+            "lang": "_pt_BR"
+        }
+
+        res = self._post_with_auth(url, body)
+        res_json = res.json()
+
+        historico = res_json.get("result_data", {}).get("pageList", [])
+        return {"alarmes_historicos": historico}

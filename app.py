@@ -74,6 +74,42 @@ start_scheduler()
 
 # ============== ⬇ ROTAS PRINCIPAIS ==============
 
+@app.get("/alarmes_atuais")
+def obter_alarmes_atuais(
+    plant_id: int = Query(...),
+    db: Session = Depends(get_db),
+    usuario_logado: User = Depends(get_current_user)
+):
+    integracao = db.query(Integracao).filter_by(cliente_id=usuario_logado.id, plataforma="Sungrow").first()
+
+    if not integracao:
+        raise HTTPException(status_code=404, detail="Integração da plataforma Sungrow não encontrada")
+
+    isolarcloud = ApiSolarCloud(db=db, integracao=integracao)
+
+    try:
+        return isolarcloud.get_alarmes_atuais(plant_id=plant_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao obter alarmes atuais: {str(e)}")
+
+@app.get("/alarmes_historico")
+def obter_alarmes_historico(
+    plant_id: int = Query(...),
+    db: Session = Depends(get_db),
+    usuario_logado: User = Depends(get_current_user)
+):
+    integracao = db.query(Integracao).filter_by(cliente_id=usuario_logado.id, plataforma="Sungrow").first()
+
+    if not integracao:
+        raise HTTPException(status_code=404, detail="Integração da plataforma Sungrow não encontrada")
+
+    isolarcloud = ApiSolarCloud(db=db, integracao=integracao)
+
+    try:
+        return isolarcloud.get_alarmes_historico(plant_id=plant_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao obter alarmes históricos: {str(e)}")
+
 @app.get("/usina", response_model=List[UsinaModel])
 def listar_usinas(usuario_logado: User = Depends(get_current_user), db: Session = Depends(get_db)):
     usinas = []
@@ -108,9 +144,6 @@ def listar_usinas(usuario_logado: User = Depends(get_current_user), db: Session 
 
     print(f"📦 Total de usinas retornadas: {len(usinas)}")
     return agrupar_usinas_por_nome(usinas)
-
-
-
 
 @app.get("/geracoes_diarias")
 def listar_geracoes_diarias(
