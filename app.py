@@ -70,6 +70,29 @@ start_scheduler()
 
 # ============== ⬇ ROTAS PRINCIPAIS ==============
 
+def buscar_apis_integradas(db: Session, usuario_logado: User):
+    integracoes = (
+        db.query(Integracao)
+        .filter(Integracao.cliente_id == usuario_logado.id, Integracao.status == "active")
+        .all()
+    )
+
+    sungrow_api = None
+    deye_api = None
+
+    for integracao in integracoes:
+        plataforma = integracao.plataforma.lower()
+
+        if plataforma == "sungrow":
+            print("🔧 Inicializando API Sungrow")
+            sungrow_api = ApiSolarCloud(db=db, integracao=integracao)
+
+        elif plataforma == "deye":
+            print("🔧 Inicializando API Deye")
+            deye_api = ApiDeye(db=db, integracao=integracao)
+
+    return sungrow_api, deye_api
+
 @app.get("/alarmes_atuais/todos")
 def listar_todos_atuais(db: Session = Depends(get_db), usuario_logado: User = Depends(get_current_user)):
     integracao = db.query(Integracao).filter_by(cliente_id=usuario_logado.id, plataforma="Sungrow").first()
@@ -125,168 +148,122 @@ def obter_alarmes_historico(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao obter alarmes históricos: {str(e)}")
 
-@app.get("/usina", response_model=List[UsinaModel])
-def listar_usinas(usuario_logado: User = Depends(get_current_user), db: Session = Depends(get_db)):
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+from typing import List
+from modelos import User
+from esquemas import UsinaModel
+from database import get_db
+from dependencies import get_current_user
+from utils import agrupar_usinas_por_nome
+from clients.deye_client import ApiDeye
+from clients.isolarcloud_client import ApiSolarCloud
+from modelos import Integracao
+
+router = APIRouter()
+
+@router.get("/usina", response_model=List[UsinaModel])
+def listar_usinas(
+    usuario_logado: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     usinas = []
 
-    # DEYE
-    try:
-        integracao_deye = get_integracao_por_plataforma(db, usuario_logado.id, "deye")
-        print("🔎 Integração Deye:", integracao_deye)
-        if integracao_deye:
-            deye = ApiDeye(db=db, integracao=integracao_deye)
-            usinas += deye.get_usinas()
-        else:
-            print("⚠️ Integração Deye não encontrada.")
-    except Exception as e:
-        print("⚠️ Erro ao buscar usinas da Deye:", str(e))
+    # Buscar todas as integrações ativas do usuário
+    integracoes = (
+        db.query(Integracao)
+        .filter(
+            Integracao.cliente_id == usuario_logado.id,
+            Integracao.status == "active"
+        )
+        .all()
+    )
 
-    # SUNGROW (nome correto no banco é "Sungrow")
-    try:
-        print(f"🔎 Tentando buscar integração Sungrow para cliente ID: {usuario_logado.id}")
-        integracao_solar = get_integracao_por_plataforma(db, usuario_logado.id, "Sungrow")
-        print("🔁 Resultado:", integracao_solar)
-        if integracao_solar:
-            isolarcloud = ApiSolarCloud(db=db, integracao=integracao_solar)
-            usinas += isolarcloud.get_usinas()
-        else:
-            print("⚠️ Integração Sungrow não encontrada para o cliente.")
-    except Exception as e:
-        print("⚠️ Erro ao buscar usinas da Sungrow:", str(e))
+    for integracao in integracoes:
+        plataforma = integracao.plataforma.lower()
+
+        try:
+            if plataforma == "deye":
+                print("🔎 Integração Deye:", integracao)
+                deye = ApiDeye(db=db, integracao=integracao)
+                usinas += deye.get_usinas()
+
+            elif plataforma == "sungrow":
+                print("🔎 Integração Sungrow:", integracao)
+                isolarcloud = ApiSolarCloud(db=db, integracao=integracao)
+                usinas += isolarcloud.get_usinas()
+
+            else:
+                print(f"⚠️ Plataforma não reconhecida: {integracao.plataforma}")
+
+        except Exception as e:
+            print(f"❌ Erro ao buscar usinas da plataforma {plataforma}: {e}")
 
     print(f"📦 Total de usinas retornadas: {len(usinas)}")
     return agrupar_usinas_por_nome(usinas)
 
-@app.get("/geracoes_diarias")
+
+@router.get("/geracoes_diarias")
 def listar_geracoes_diarias(
     db: Session = Depends(get_db),
     usuario_logado: User = Depends(get_current_user)
 ):
     geracoes = []
 
-    try:
-        integracao_solar = get_integracao_por_plataforma(db, usuario_logado.id, "Sungrow")
-        if integracao_solar:
-            isolarcloud = ApiSolarCloud(db=db, integracao=integracao_solar)
-            geracoes += isolarcloud.get_geracao().get("diario", [])
-        else:
-            print("⚠️ Integração Sungrow não encontrada")
-    except Exception as e:
-        print("⚠️ Erro ao obter geração da iSolarCloud:", str(e))
+    # Buscar todas as integrações ativas do cliente
+    integracoes = (
+        db.query(Integracao)
+        .filter(
+            Integracao.cliente_id == usuario_logado.id,
+            Integracao.status == "active"
+        )
+        .all()
+    )
 
-    try:
-        integracao_deye = get_integracao_por_plataforma(db, usuario_logado.id, "deye")
-        if integracao_deye:
-            deye = ApiDeye(
-                username=integracao_deye.username,
-                password=integracao_deye.senha
-            )
-            geracoes += deye.get_geracao().get("diario", [])
-        else:
-            print("⚠️ Integração Deye não encontrada")
-    except Exception as e:
-        print("⚠️ Erro ao obter geração da Deye:", str(e))
+    for integracao in integracoes:
+        plataforma = integracao.plataforma.lower()
+
+        try:
+            if plataforma == "sungrow":
+                print("🔎 Obtendo geração diária da Sungrow")
+                isolarcloud = ApiSolarCloud(db=db, integracao=integracao)
+                geracoes += isolarcloud.get_geracao().get("diario", [])
+
+            elif plataforma == "deye":
+                print("🔎 Obtendo geração diária da Deye")
+                deye = ApiDeye(db=db, integracao=integracao)
+                geracoes += deye.get_geracao().get("diario", [])
+
+            else:
+                print(f"⚠️ Plataforma não reconhecida: {plataforma}")
+
+        except Exception as e:
+            print(f"❌ Erro ao obter geração da plataforma {plataforma}: {e}")
 
     return geracoes
 
-
-@app.get("/performance_diaria")
+@router.get("/performance_diaria")
 def performance_diaria(
     db: Session = Depends(get_db),
     usuario_logado: User = Depends(get_current_user)
 ):
-    integracao_sungrow = get_integracao_por_plataforma(db, usuario_logado.id, "Sungrow")
-    integracao_deye = get_integracao_por_plataforma(db, usuario_logado.id, "deye")
-
-    sungrow_api = None
-    deye_api = None
-
-    if integracao_sungrow:
-        sungrow_api = ApiSolarCloud(db=db, integracao=integracao_sungrow)
-
-    if integracao_deye:
-        integracao = db.query(Integracao).filter(
-            Integracao.cliente_id == current_user.id,
-            Integracao.plataforma == "deye"
-        ).first()
-
-        if not integracao:
-            print("⚠️ Integração Deye não encontrada.")
-            raise HTTPException(status_code=404, detail="Integração Deye não encontrada")
-
-        print(f"🔎 Integração Deye: {integracao}")
-        deye_api = ApiDeye(db=db, integracao=integracao)
-
-
+    sungrow_api, deye_api = buscar_apis_integradas(db, usuario_logado)
     return get_performance_diaria(sungrow_api, deye_api, db, usuario_logado.id)
 
-
-
-@app.get("/performance_7dias")
-def performance_7dias(db: Session = Depends(get_db), usuario_logado: User = Depends(get_current_user)):
-    integracao_sungrow = get_integracao_por_plataforma(db, usuario_logado.id, "Sungrow")
-    integracao_deye = get_integracao_por_plataforma(db, usuario_logado.id, "deye")
-
-    sungrow_api = None
-    deye_api = None
-
-    if integracao_sungrow:
-        sungrow_api = ApiSolarCloud(db=db, integracao=integracao_sungrow)
-
-    if integracao_deye:
-        integracao = db.query(Integracao).filter(
-            Integracao.cliente_id == current_user.id,
-            Integracao.plataforma == "deye"
-        ).first()
-
-        if not integracao:
-            print("⚠️ Integração Deye não encontrada.")
-            raise HTTPException(status_code=404, detail="Integração Deye não encontrada")
-
-        print(f"🔎 Integração Deye: {integracao}")
-        deye_api = ApiDeye(db=db, integracao=integracao)
-
-
+@router.get("/performance_7dias")
+def performance_7dias(
+    db: Session = Depends(get_db),
+    usuario_logado: User = Depends(get_current_user)
+):
+    sungrow_api, deye_api = buscar_apis_integradas(db, usuario_logado)
     return get_performance_7dias(sungrow_api, deye_api, db, usuario_logado.id)
 
-@app.get("/performance_30dias")
+@router.get("/performance_30dias")
 def performance_30dias(
     db: Session = Depends(get_db),
     usuario_logado: User = Depends(get_current_user)
 ):
-    integracao_sungrow = get_integracao_por_plataforma(db, usuario_logado.id, "Sungrow")
-    integracao_deye = get_integracao_por_plataforma(db, usuario_logado.id, "deye")
-
-    sungrow_api = None
-    deye_api = None
-
-    if integracao_sungrow:
-        sungrow_api = ApiSolarCloud(db=db, integracao=integracao_sungrow)
-    if integracao_deye:
-        integracao = db.query(Integracao).filter(
-            Integracao.cliente_id == current_user.id,
-            Integracao.plataforma == "deye"
-        ).first()
-
-        if not integracao:
-            print("⚠️ Integração Deye não encontrada.")
-            raise HTTPException(status_code=404, detail="Integração Deye não encontrada")
-
-        print(f"🔎 Integração Deye: {integracao}")
-        integracao = db.query(Integracao).filter(
-            Integracao.cliente_id == current_user.id,
-            Integracao.plataforma == "deye"
-        ).first()
-
-        if not integracao:
-            print("⚠️ Integração Deye não encontrada.")
-            raise HTTPException(status_code=404, detail="Integração Deye não encontrada")
-
-        print(f"🔎 Integração Deye: {integracao}")
-        deye_api = ApiDeye(db=db, integracao=integracao)
-
-
-
+    sungrow_api, deye_api = buscar_apis_integradas(db, usuario_logado)
     return get_performance_30dias(sungrow_api, deye_api, db, usuario_logado.id)
 
 
