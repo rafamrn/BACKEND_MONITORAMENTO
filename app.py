@@ -152,7 +152,6 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from typing import List
 from modelos import User
-from esquemas import UsinaModel
 from database import get_db
 from dependencies import get_current_user
 from utils import agrupar_usinas_por_nome
