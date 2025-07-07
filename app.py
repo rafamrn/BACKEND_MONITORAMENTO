@@ -205,11 +205,7 @@ def performance_diaria(
         sungrow_api = ApiSolarCloud(db=db, integracao=integracao_sungrow)
 
     if integracao_deye:
-        deye_api = ApiDeye(
-            appid=integracao_deye.username,
-            appsecret=integracao_deye.appsecret,
-            password_sha256=integracao_deye.senha
-        )
+        deye_api = ApiDeye(db=db, integracao=integracao)
 
     return get_performance_diaria(sungrow_api, deye_api, db, usuario_logado.id)
 
@@ -227,11 +223,7 @@ def performance_7dias(db: Session = Depends(get_db), usuario_logado: User = Depe
         sungrow_api = ApiSolarCloud(db=db, integracao=integracao_sungrow)
 
     if integracao_deye:
-        deye_api = ApiDeye(
-            appid=integracao_deye.username,
-            appsecret=integracao_deye.appsecret,
-            password_sha256=integracao_deye.senha
-        )
+        deye_api = ApiDeye(db=db, integracao=integracao)
 
     return get_performance_7dias(sungrow_api, deye_api, db, usuario_logado.id)
 
@@ -249,11 +241,7 @@ def performance_30dias(
     if integracao_sungrow:
         sungrow_api = ApiSolarCloud(db=db, integracao=integracao_sungrow)
     if integracao_deye:
-        deye_api = ApiDeye(
-            appid=integracao_deye.username,
-            appsecret=integracao_deye.appsecret,
-            password_sha256=integracao_deye.senha
-        )
+        deye_api = ApiDeye(db=db, integracao=integracao)
 
     return get_performance_30dias(sungrow_api, deye_api, db, usuario_logado.id)
 
@@ -483,11 +471,7 @@ def atualizar_chaves_admin(
         integracao.appsecret = payload.get("appsecret")
 
         # Instanciando com nova assinatura
-        deye_api = ApiDeye(
-            appid=integracao.username,
-            appsecret=integracao.appsecret,
-            password_sha256=integracao.senha
-        )
+        deye_api = ApiDeye(db=db, integracao=integracao)
 
         company_id = deye_api.obter_company_id()
         if company_id:
