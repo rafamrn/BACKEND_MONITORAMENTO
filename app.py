@@ -472,12 +472,13 @@ def atualizar_chaves_admin(id: int, payload: dict, db: Session = Depends(get_db)
         integracao.appsecret = payload.get("appsecret")
 
     # Atualiza status se os campos obrigatórios estiverem preenchidos
-    if (integracao.plataforma.lower() == "sungrow" and integracao.appkey and integracao.x_access_key) or \
-       (integracao.plataforma.lower() == "deye" and integracao.appid and integracao.appsecret):
+    if (
+        (integracao.plataforma.lower() == "sungrow" and integracao.appkey and integracao.x_access_key) or
+        (integracao.plataforma.lower() == "deye" and integracao.appid and integracao.appsecret)
+    ):
         integracao.status = "active"
     else:
         integracao.status = "inactive"
-
     db.commit()
     db.refresh(integracao)
     return {"detail": "Chaves atualizadas com sucesso"}
