@@ -57,22 +57,16 @@ class IntegracaoOut(BaseModel):
     plataforma: str
     username: str
     senha: str
-    status: Optional[str] = None
-    # Campos usados pela Sungrow
     appkey: Optional[str] = None
     x_access_key: Optional[str] = None
-
-    # Campos usados pela Deye
-    appid: Optional[str] = None
-    appsecret: Optional[str] = None
-    companyid: Optional[str] = None
-
-    nome: Optional[str] = None  # nome do cliente via relação
+    appid: Optional[str] = None  # ✅ novo
+    appsecret: Optional[str] = None  # ✅ novo
+    status: Optional[str] = None
+    nome: Optional[str] = None
+    ultima_sincronizacao: Optional[datetime] = None
 
     class Config:
         from_attributes = True
-
-
 # --------------------------
 # 📌 MODELOS DE CONVITE
 # --------------------------

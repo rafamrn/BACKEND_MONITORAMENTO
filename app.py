@@ -461,30 +461,27 @@ def atualizar_chaves_admin(id: int, payload: dict, db: Session = Depends(get_db)
     if not integracao:
         raise HTTPException(status_code=404, detail="Integração não encontrada")
 
+    # Para Sungrow
     if integracao.plataforma.lower() == "sungrow":
         integracao.appkey = payload.get("appkey")
         integracao.x_access_key = payload.get("x_access_key")
 
-        # Define como ativa se ambos os campos foram preenchidos
-        if integracao.appkey and integracao.x_access_key:
-            integracao.status = "active"
-        else:
-            integracao.status = "inactive"
-
+    # Para Deye
     elif integracao.plataforma.lower() == "deye":
         integracao.appid = payload.get("appid")
         integracao.appsecret = payload.get("appsecret")
-        integracao.companyid = payload.get("companyid")
 
-        # Define como ativa se todos os campos foram preenchidos
-        if integracao.appid and integracao.appsecret and integracao.companyid:
-            integracao.status = "active"
-        else:
-            integracao.status = "inactive"
+    # Atualiza status se os campos obrigatórios estiverem preenchidos
+    if (integracao.plataforma.lower() == "sungrow" and integracao.appkey and integracao.x_access_key) or \
+       (integracao.plataforma.lower() == "deye" and integracao.appid and integracao.appsecret):
+        integracao.status = "active"
+    else:
+        integracao.status = "inactive"
 
     db.commit()
     db.refresh(integracao)
-    return {"detail": "Credenciais atualizadas com sucesso", "status": integracao.status}
+    return {"detail": "Chaves atualizadas com sucesso"}
+
 
 # ============== ⬇ INCLUDES ==============
 
