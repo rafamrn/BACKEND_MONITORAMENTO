@@ -35,14 +35,12 @@ from services.performance_service import (
     get_performance_diaria, get_performance_7dias, get_performance_30dias
 )
 from models.usina import UsinaModel
-from clients.isolarcloud_client import ApiSolarCloud
 from clients.huawei_client import ApiHuawei
 from clients.deye_client import ApiDeye
 from routers import projection
 from routes import convites
 from rotas import solarcloud_routes
 from passlib.hash import bcrypt
-from clients.isolarcloud_client import ApiSolarCloud
 from services.scheduler import start_scheduler
 
 # ============== ⬇ APP ==============
@@ -136,10 +134,7 @@ def listar_usinas(usuario_logado: User = Depends(get_current_user), db: Session 
         integracao_deye = get_integracao_por_plataforma(db, usuario_logado.id, "deye")
         print("🔎 Integração Deye:", integracao_deye)
         if integracao_deye:
-            deye = ApiDeye(
-                username=integracao_deye.username,
-                password=integracao_deye.senha
-            )
+            deye = ApiDeye(db=db, integracao=integracao_deye)
             usinas += deye.get_usinas()
         else:
             print("⚠️ Integração Deye não encontrada.")
@@ -478,6 +473,17 @@ def atualizar_chaves_admin(id: int, payload: dict, db: Session = Depends(get_db)
     elif integracao.plataforma.lower() == "deye":
         integracao.appid = payload.get("appid")
         integracao.appsecret = payload.get("appsecret")
+
+        # Após definir appid e appsecret, tentar obter o companyId
+        deye_api = ApiDeye(
+            username=integracao.username,
+            password=integracao.senha,
+            appid=integracao.appid,
+            appsecret=integracao.appsecret
+        )
+        company_id = deye_api.obter_company_id()
+        if company_id:
+            integracao.companyid = str(company_id)
 
     # Atualiza status se os campos obrigatórios estiverem preenchidos
     if (
