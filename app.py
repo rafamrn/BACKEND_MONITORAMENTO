@@ -205,7 +205,18 @@ def performance_diaria(
         sungrow_api = ApiSolarCloud(db=db, integracao=integracao_sungrow)
 
     if integracao_deye:
+        integracao = db.query(Integracao).filter(
+            Integracao.cliente_id == current_user.id,
+            Integracao.plataforma == "deye"
+        ).first()
+
+        if not integracao:
+            print("⚠️ Integração Deye não encontrada.")
+            raise HTTPException(status_code=404, detail="Integração Deye não encontrada")
+
+        print(f"🔎 Integração Deye: {integracao}")
         deye_api = ApiDeye(db=db, integracao=integracao)
+
 
     return get_performance_diaria(sungrow_api, deye_api, db, usuario_logado.id)
 
@@ -223,7 +234,18 @@ def performance_7dias(db: Session = Depends(get_db), usuario_logado: User = Depe
         sungrow_api = ApiSolarCloud(db=db, integracao=integracao_sungrow)
 
     if integracao_deye:
+        integracao = db.query(Integracao).filter(
+            Integracao.cliente_id == current_user.id,
+            Integracao.plataforma == "deye"
+        ).first()
+
+        if not integracao:
+            print("⚠️ Integração Deye não encontrada.")
+            raise HTTPException(status_code=404, detail="Integração Deye não encontrada")
+
+        print(f"🔎 Integração Deye: {integracao}")
         deye_api = ApiDeye(db=db, integracao=integracao)
+
 
     return get_performance_7dias(sungrow_api, deye_api, db, usuario_logado.id)
 
@@ -241,7 +263,29 @@ def performance_30dias(
     if integracao_sungrow:
         sungrow_api = ApiSolarCloud(db=db, integracao=integracao_sungrow)
     if integracao_deye:
+        integracao = db.query(Integracao).filter(
+            Integracao.cliente_id == current_user.id,
+            Integracao.plataforma == "deye"
+        ).first()
+
+        if not integracao:
+            print("⚠️ Integração Deye não encontrada.")
+            raise HTTPException(status_code=404, detail="Integração Deye não encontrada")
+
+        print(f"🔎 Integração Deye: {integracao}")
+        integracao = db.query(Integracao).filter(
+            Integracao.cliente_id == current_user.id,
+            Integracao.plataforma == "deye"
+        ).first()
+
+        if not integracao:
+            print("⚠️ Integração Deye não encontrada.")
+            raise HTTPException(status_code=404, detail="Integração Deye não encontrada")
+
+        print(f"🔎 Integração Deye: {integracao}")
         deye_api = ApiDeye(db=db, integracao=integracao)
+
+
 
     return get_performance_30dias(sungrow_api, deye_api, db, usuario_logado.id)
 
@@ -471,7 +515,18 @@ def atualizar_chaves_admin(
         integracao.appsecret = payload.get("appsecret")
 
         # Instanciando com nova assinatura
+        integracao = db.query(Integracao).filter(
+            Integracao.cliente_id == current_user.id,
+            Integracao.plataforma == "deye"
+        ).first()
+
+        if not integracao:
+            print("⚠️ Integração Deye não encontrada.")
+            raise HTTPException(status_code=404, detail="Integração Deye não encontrada")
+
+        print(f"🔎 Integração Deye: {integracao}")
         deye_api = ApiDeye(db=db, integracao=integracao)
+
 
         company_id = deye_api.obter_company_id()
         if company_id:
