@@ -810,3 +810,53 @@ class ApiSolarCloud:
 
         historico = res_json.get("result_data", {}).get("pageList", [])
         return {"alarmes_historicos": historico}
+    
+    def get_todos_alarmes_atuais(self):
+        if not self.token_cache:
+            self._obter_token()
+        if not self.usinas_cache:
+            self.get_usinas()
+
+        url = self.base_url + "getFaultAlarmInfo"
+
+        body = {
+            "token": self.token_cache,
+            "appkey": self.appkey,
+            "fault_type": "1,2,3,4",
+            "fault_level": "1,2,3,4",
+            "curPage": 1,
+            "size": 200,
+            "share_type": "0,1,2",
+            "process_status": "8",  # Alarmes atuais
+            "lang": "_pt_BR"
+        }
+
+        res = self._post_with_auth(url, body)
+        res_json = res.json()
+        alarmes = res_json.get("result_data", {}).get("pageList", [])
+        return {"alarmes": alarmes}
+
+    def get_todos_alarmes_historico(self):
+        if not self.token_cache:
+            self._obter_token()
+        if not self.usinas_cache:
+            self.get_usinas()
+
+        url = self.base_url + "getFaultAlarmInfo"
+
+        body = {
+            "token": self.token_cache,
+            "appkey": self.appkey,
+            "fault_type": "1,2,3,4",
+            "fault_level": "1,2,3,4",
+            "curPage": 1,
+            "size": 200,
+            "share_type": "0,1,2",
+            "process_status": "9",  # Resolvidos
+            "lang": "_pt_BR"
+        }
+
+        res = self._post_with_auth(url, body)
+        res_json = res.json()
+        historico = res_json.get("result_data", {}).get("pageList", [])
+        return {"historico": historico}
