@@ -433,7 +433,6 @@ def criar_integracao(integracao: IntegracaoCreate, db: Session = Depends(get_db)
 
     nova = Integracao(
         cliente_id=user.id,
-        nome=user.name,
         plataforma=integracao.plataforma,
         username=integracao.username,
         senha=senha,
