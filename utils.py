@@ -51,7 +51,7 @@ def agrupar_usinas_por_nome(usinas: List[dict]) -> List[dict]:
                 "today_energy": float(u["today_energy"]),
                 "co2_total": float(u["co2_total"]),
                 "income_total": float(u["income_total"]),
-                "ps_fault_status": int(u["ps_fault_status"]),
+                "ps_fault_status": int(u["ps_fault_status"]) if u["ps_fault_status"] is not None else 0,
             })
         else:
             primeira = grupo[0]
