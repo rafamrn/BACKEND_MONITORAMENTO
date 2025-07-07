@@ -4,6 +4,8 @@ import time
 from utils import parse_float
 from datetime import datetime, timedelta
 from pytz import timezone
+from sqlalchemy.orm import Session
+from modelos import Integracao
 
 
 class ApiDeye:
@@ -14,18 +16,41 @@ class ApiDeye:
         'Content-Type': 'application/json'
     }
 
-    def __init__(self, username, password, appid, appsecret):
-        self.username = username
-        self.password = password
-        self.appid = appid
-        self.appsecret = appsecret
-        self.accesstoken = None
-        self.last_token_time = 0
+    def __init__(self, db: Session, integracao: Integracao):
+        self.db = db
+        self.integracao = integracao
+
+        self.username = integracao.username
+        self.password = integracao.senha
+        self.appid = integracao.appid
+        self.appsecret = integracao.appsecret
+        self.companyId = int(integracao.companyid)
+
+        self.accesstoken = integracao.token_acesso
+        self.last_token_time = time.mktime(integracao.token_updated_at.timetuple()) if integracao.token_updated_at else 0
+
+        self.session = requests.Session()
         self.cached_data = None
         self.last_cache_time = 0
-        self.session = requests.Session()
         self._geracao_cache = None
         self._geracao_cache_timestamp = None
+
+        self.headers_login = {
+            'Content-Type': 'application/json'
+        }
+
+        self.db.refresh(self.integracao)
+
+        if self.accesstoken and integracao.token_updated_at:
+            if datetime.utcnow() - integracao.token_updated_at < timedelta(minutes=50):
+                print("✅ Usando token Deye do banco de dados")
+            else:
+                print("🔄 Token expirado. Renovando...")
+                self.fazer_login()
+        else:
+            print("🔐 Sem token válido. Autenticando...")
+            self.fazer_login()
+
 
     def fazer_login(self):
         if self.accesstoken and (time.time() - self.last_token_time < self.cache_expiry):

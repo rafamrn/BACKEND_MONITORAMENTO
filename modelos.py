@@ -30,16 +30,25 @@ class Integracao(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     cliente_id = Column(Integer, ForeignKey("users.id"))
-    nome = Column(String, nullable=True)
     plataforma = Column(String, nullable=False)
-    username = Column(String, nullable=False)
-    senha = Column(String, nullable=False)
-    x_access_key = Column(String, nullable=True)
-    appkey = Column(String, nullable=True)
-    token_acesso = Column(String, nullable=True)
-    token_expira_em = Column(DateTime, nullable=True)
+    username = Column(String)
+    senha = Column(String)
+
+    appid = Column(String)          # 🔑 Novo campo para AppID (Deye)
+    appsecret = Column(String)      # 🔐 Novo campo para AppSecret (Deye)
+    companyid = Column(String)      # 🏢 Novo campo para Company ID (Deye)
+
+    x_access_key = Column(String)   # usado apenas pela Sungrow
+    appkey = Column(String)         # usado apenas pela Sungrow
+
+    token_acesso = Column(String)
     token_updated_at = Column(DateTime)
+    token_expira_em = Column(DateTime)
+    status = Column(String)
+    ultima_sincronizacao = Column(DateTime)
+
     cliente = relationship("User", back_populates="integracoes")
+
 
     
 class Convite(Base):
