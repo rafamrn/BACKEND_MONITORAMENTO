@@ -74,7 +74,7 @@ start_scheduler()
 
 # ============== ⬇ ROTAS PRINCIPAIS ==============
 
-@app.get("/alarmes_atuais")
+@app.get("/alarmes_atuais/todos")
 def listar_todos_atuais(db: Session = Depends(get_db), usuario_logado: User = Depends(get_current_user)):
     integracao = db.query(Integracao).filter_by(cliente_id=usuario_logado.id, plataforma="Sungrow").first()
     if not integracao:
@@ -83,7 +83,7 @@ def listar_todos_atuais(db: Session = Depends(get_db), usuario_logado: User = De
     solarcloud = ApiSolarCloud(db=db, integracao=integracao)
     return solarcloud.get_todos_alarmes_atuais()
 
-@app.get("/alarmes_historico")
+@app.get("/alarmes_historico/todos")
 def listar_todos_historico(db: Session = Depends(get_db), usuario_logado: User = Depends(get_current_user)):
     integracao = db.query(Integracao).filter_by(cliente_id=usuario_logado.id, plataforma="Sungrow").first()
     if not integracao:
