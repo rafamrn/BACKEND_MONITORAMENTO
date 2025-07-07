@@ -66,9 +66,6 @@ app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
 
 # ============== ⬇ CLIENTES DAS APIS ==============
 huawei = ApiHuawei(settings.HUAWEI_USER, settings.HUAWEI_PASS)
-deye = ApiDeye(settings.DEYE_USER, settings.DEYE_PASS, settings.DEYE_APPID, settings.DEYE_APPSECRET)
-
-
 
 start_scheduler()
 
@@ -429,7 +426,6 @@ integracao_router = APIRouter(prefix="/integracoes", tags=["Integrações"])
 def criar_integracao(integracao: IntegracaoCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     nova = Integracao(
         cliente_id=user.id,
-        nome=user.name,
         plataforma=integracao.plataforma,
         username=integracao.username,
         senha=integracao.senha,
@@ -438,6 +434,7 @@ def criar_integracao(integracao: IntegracaoCreate, db: Session = Depends(get_db)
     db.commit()
     db.refresh(nova)
     return {"message": "Integração salva com sucesso", "id": nova.id}
+
 
 @integracao_router.get("/", response_model=List[IntegracaoOut])
 def listar_integracoes(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
@@ -462,11 +459,20 @@ def atualizar_chaves_admin(id: int, payload: dict, db: Session = Depends(get_db)
     integracao = db.query(Integracao).filter(Integracao.id == id).first()
     if not integracao:
         raise HTTPException(status_code=404, detail="Integração não encontrada")
-    integracao.appkey = payload.get("appkey")
-    integracao.x_access_key = payload.get("x_access_key")
+
+    if integracao.plataforma.lower() == "sungrow":
+        integracao.appkey = payload.get("appkey")
+        integracao.x_access_key = payload.get("x_access_key")
+
+    elif integracao.plataforma.lower() == "deye":
+        integracao.appid = payload.get("appid")
+        integracao.appsecret = payload.get("appsecret")
+        integracao.companyid = payload.get("companyid")
+
     db.commit()
     db.refresh(integracao)
-    return {"detail": "Chaves atualizadas com sucesso"}
+    return {"detail": "Credenciais atualizadas com sucesso"}
+
 
 # ============== ⬇ INCLUDES ==============
 
