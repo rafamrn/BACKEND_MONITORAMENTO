@@ -57,7 +57,7 @@ class IntegracaoOut(BaseModel):
     plataforma: str
     username: str
     senha: str
-
+    status: Optional[str] = None
     # Campos usados pela Sungrow
     appkey: Optional[str] = None
     x_access_key: Optional[str] = None

@@ -451,6 +451,7 @@ def listar_integracoes_admin(db: Session = Depends(get_db), usuario_logado: User
     for i in integracoes:
         integracao_dict = jsonable_encoder(i)
         integracao_dict["nome"] = i.cliente.name if i.cliente else None
+        integracao_dict["status"] = i.status
         resultado.append(integracao_dict)
     return resultado
 
