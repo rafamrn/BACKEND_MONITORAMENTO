@@ -23,6 +23,7 @@ class ApiSolarCloud:
     def __init__(self, db: Session, integracao: Integracao):
         self.db = db
         self.integracao = integracao
+        self.token_timestamp = 0
 
         self.username = integracao.username
         self.password = integracao.senha
