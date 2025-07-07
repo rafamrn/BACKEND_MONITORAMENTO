@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException, status, Query, APIRouter
+import hashlib
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.responses import FileResponse
@@ -424,16 +425,24 @@ integracao_router = APIRouter(prefix="/integracoes", tags=["Integrações"])
 
 @integracao_router.post("/")
 def criar_integracao(integracao: IntegracaoCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    senha = integracao.senha
+
+    # 🔐 Aplica SHA256 se for integração Deye
+    if integracao.plataforma.lower() == "deye":
+        senha = hashlib.sha256(senha.encode()).hexdigest().lower()
+
     nova = Integracao(
         cliente_id=user.id,
+        nome=user.name,
         plataforma=integracao.plataforma,
         username=integracao.username,
-        senha=integracao.senha,
+        senha=senha,
     )
     db.add(nova)
     db.commit()
     db.refresh(nova)
     return {"message": "Integração salva com sucesso", "id": nova.id}
+
 
 
 @integracao_router.get("/", response_model=List[IntegracaoOut])
