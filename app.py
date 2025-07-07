@@ -462,7 +462,12 @@ def listar_integracoes_admin(db: Session = Depends(get_db), usuario_logado: User
     return resultado
 
 @admin_router.put("/integracoes/{id}")
-def atualizar_chaves_admin(id: int, payload: dict, db: Session = Depends(get_db), usuario: User = Depends(get_current_admin_user)):
+def atualizar_chaves_admin(
+    id: int,
+    payload: dict,
+    db: Session = Depends(get_db),
+    usuario: User = Depends(get_current_admin_user)
+):
     integracao = db.query(Integracao).filter(Integracao.id == id).first()
     if not integracao:
         raise HTTPException(status_code=404, detail="Integração não encontrada")
@@ -477,13 +482,13 @@ def atualizar_chaves_admin(id: int, payload: dict, db: Session = Depends(get_db)
         integracao.appid = payload.get("appid")
         integracao.appsecret = payload.get("appsecret")
 
-        # Após definir appid e appsecret, tentar obter o companyId
+        # Instanciando com nova assinatura
         deye_api = ApiDeye(
-            username=integracao.username,
-            password=integracao.senha,
-            appid=integracao.appid,
-            appsecret=integracao.appsecret
+            appid=integracao.username,
+            appsecret=integracao.appsecret,
+            password_sha256=integracao.senha
         )
+
         company_id = deye_api.obter_company_id()
         if company_id:
             integracao.companyid = str(company_id)
@@ -496,9 +501,11 @@ def atualizar_chaves_admin(id: int, payload: dict, db: Session = Depends(get_db)
         integracao.status = "active"
     else:
         integracao.status = "inactive"
+
     db.commit()
     db.refresh(integracao)
     return {"detail": "Chaves atualizadas com sucesso"}
+
 
 
 # ============== ⬇ INCLUDES ==============
