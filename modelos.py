@@ -44,7 +44,7 @@ class Integracao(Base):
     token_acesso = Column(String)
     token_updated_at = Column(DateTime)
     token_expira_em = Column(DateTime)
-    status = Column(String)
+    status = Column(String, default="inactive")
     ultima_sincronizacao = Column(DateTime)
 
     cliente = relationship("User", back_populates="integracoes")
