@@ -39,7 +39,6 @@ class ApiDeye:
             "password": self.password,
             "companyId": self.companyId
         }
-
         response = self.session.post(url, json=body, headers=self.headers_login)
 
         if response.status_code != 200:
