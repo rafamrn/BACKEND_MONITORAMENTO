@@ -433,12 +433,14 @@ def criar_integracao(
 ):
     # Cria a integração com a senha pura
     nova = Integracao(
-        cliente_id=user.id,
-        nome=user.name,
-        plataforma=integracao.plataforma,
-        username=integracao.username,
-        senha=integracao.senha,
-    )
+    cliente_id=user.id,
+    nome=user.name,
+    plataforma=integracao.plataforma,
+    username=integracao.username,
+    senha=integracao.senha,
+    appid=integracao.appid,
+    appsecret=integracao.appsecret,
+)
     db.add(nova)
     db.commit()
     db.refresh(nova)
