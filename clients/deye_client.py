@@ -1,7 +1,7 @@
 import requests
 import json
 import time
-from utils import parse_float
+from helpers import parse_float
 from datetime import datetime, timedelta
 from pytz import timezone
 from modelos import Integracao
