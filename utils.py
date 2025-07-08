@@ -5,8 +5,24 @@ from passlib.context import CryptContext
 from modelos import Integracao
 from sqlalchemy.orm import Session
 import hashlib
+from clients.isolarcloud_client import ApiSolarCloud
+from clients.deye_client import ApiDeye
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+def get_apis_ativas(db: Session, cliente_id: int):
+    apis = []
+    integracoes = db.query(Integracao).filter_by(cliente_id=cliente_id).all()
+
+    for integracao in integracoes:
+        if integracao.plataforma.lower() == "sungrow":
+            apis.append(ApiSolarCloud(db=db, integracao=integracao))
+        elif integracao.plataforma.lower() == "deye":
+            apis.append(ApiDeye(db=db, integracao=integracao))
+        # Adicione aqui novas plataformas se necessário
+
+    return apis
 
 def hash_sha256(password: str) -> str:
     """

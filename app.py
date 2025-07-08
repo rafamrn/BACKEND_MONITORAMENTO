@@ -413,6 +413,27 @@ integracao_router = APIRouter(prefix="/integracoes", tags=["Integrações"])
 
 from utils import hash_sha256  # certifique-se de importar isso no topo
 
+@app.post("/forcar_calculo_performance")
+def forcar_performance(
+    db: Session = Depends(get_db),
+    usuario_logado: User = Depends(get_current_user)
+):
+    from services.performance_service import (
+        get_performance_diaria, get_performance_7dias, get_performance_30dias
+    )
+    from utils import get_apis_ativas
+
+    apis = get_apis_ativas(db, usuario_logado.id)
+    diaria = get_performance_diaria(apis, db, usuario_logado.id)
+    dias7 = get_performance_7dias(apis, db, usuario_logado.id)
+    dias30 = get_performance_30dias(apis, db, usuario_logado.id)
+    return {
+        "mensagem": "Performance recalculada com sucesso.",
+        "diaria": diaria,
+        "7dias": dias7,
+        "30dias": dias30
+    }
+
 @integracao_router.post("/")
 def criar_integracao(
     integracao: IntegracaoCreate,
