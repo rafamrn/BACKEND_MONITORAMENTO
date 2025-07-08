@@ -426,8 +426,7 @@ def criar_integracao(
     plataforma=integracao.plataforma,
     username=integracao.username,
     senha=integracao.senha,
-    appid=integracao.appid,
-    appsecret=integracao.appsecret,
+
 )
     db.add(nova)
     db.commit()

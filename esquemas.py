@@ -50,7 +50,6 @@ class IntegracaoCreate(BaseModel):
     plataforma: str
     username: str
     senha: str
-    appid: str
 
 class IntegracaoOut(BaseModel):
     id: int
