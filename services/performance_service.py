@@ -214,7 +214,10 @@ def get_performance_30dias(apis, db, cliente_id, forcar=False):
     for api in apis:
         try:
             geracao = api.get_geracao()
-            resultado_geracao += geracao.get("30dias", [])
+            if isinstance(geracao.get("30dias"), dict):
+                resultado_geracao += geracao["30dias"].get("por_usina", [])
+            else:
+                print(f"⚠️ Formato inesperado em 30dias de {api.__class__.__name__}")
         except Exception as e:
             print(f"❌ Erro ao obter geração de {api.__class__.__name__}: {e}")
 
