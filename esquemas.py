@@ -62,6 +62,7 @@ class IntegracaoOut(BaseModel):
     nome: Optional[str] = None
     appid: Optional[str] = None           # ✅ adicionado
     appsecret: Optional[str] = None       # ✅ adicionado
+    companyid: Optional[str] = None
 
     class Config:
         from_attributes = True
