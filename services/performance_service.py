@@ -115,13 +115,11 @@ def get_performance_diaria(apis, db: Session, cliente_id: int):
         .order_by(PerformanceCache.updated_at.desc())
         .first()
     )
-    if cache and cache.resultado_json and len(cache.resultado_json) > 0 and (datetime.now() - cache.updated_at) < timedelta(hours=23):
+    if cache and (datetime.now() - cache.updated_at) < timedelta(hours=23):
         print("🔁 Cache diária do banco")
         return cache.resultado_json
-    else:
-        print("🚨 Cache inválido ou vazio — recalculando")
 
-        print("⚙️ Calculando nova performance diária...")
+    print("⚙️ Calculando nova performance diária...")
 
     resultado_geracao = []
     for api in apis:
@@ -144,7 +142,6 @@ def get_performance_diaria(apis, db: Session, cliente_id: int):
             print(f"❌ Erro ao calcular performance para {g}: {e}")
 
     if resultados:
-        db.query(PerformanceCache).filter_by(cliente_id=cliente_id, tipo="diaria").delete()
         db.add(PerformanceCache(cliente_id=cliente_id, tipo="diaria", resultado_json=resultados))
         db.commit()
         print("📝 Performance diária salva no cache com sucesso!")
@@ -153,7 +150,13 @@ def get_performance_diaria(apis, db: Session, cliente_id: int):
 
     return resultados
 
-def get_performance_7dias(apis, db: Session, cliente_id: int):
+
+
+
+
+
+
+def get_performance_7dias(apis: list, db: Session, cliente_id: int):
     from models.performance_cache import PerformanceCache
 
     cache = (
@@ -162,31 +165,26 @@ def get_performance_7dias(apis, db: Session, cliente_id: int):
         .order_by(PerformanceCache.updated_at.desc())
         .first()
     )
-    if cache and cache.resultado_json and len(cache.resultado_json) > 0 and (datetime.now() - cache.updated_at) < timedelta(hours=23):
+    if cache and (datetime.now() - cache.updated_at) < timedelta(hours=23):
         print("🔁 Cache 7 dias do banco")
         return cache.resultado_json
-    else:
-        print("🚨 Cache 7 dias inválido ou vazio — recalculando")
 
     print("⚙️ Calculando nova performance dos últimos 7 dias...")
-
     resultado_geracao = []
     for api in apis:
-        geracao = api.get_geracao()
-        print(f"🔍 Resultado bruto de {api.__class__.__name__} (7 dias): {geracao}")
-        resultado_geracao += geracao.get("setedias", [])
+        resultado_geracao += api.get_geracao().get("7dias", [])
 
     resultados = [
         calcular_performance_7dias(g["ps_id"], g["energia_gerada_kWh"], db, cliente_id)
         for g in resultado_geracao
     ]
 
-    db.query(PerformanceCache).filter_by(cliente_id=cliente_id, tipo="7dias").delete()
     db.add(PerformanceCache(cliente_id=cliente_id, tipo="7dias", resultado_json=resultados))
     db.commit()
     return resultados
 
-def get_performance_30dias(apis, db: Session, cliente_id: int):
+
+def get_performance_30dias(apis: list, db: Session, cliente_id: int):
     from models.performance_cache import PerformanceCache
 
     cache = (
@@ -195,26 +193,20 @@ def get_performance_30dias(apis, db: Session, cliente_id: int):
         .order_by(PerformanceCache.updated_at.desc())
         .first()
     )
-    if cache and cache.resultado_json and len(cache.resultado_json) > 0 and (datetime.now() - cache.updated_at) < timedelta(hours=23):
+    if cache and (datetime.now() - cache.updated_at) < timedelta(hours=23):
         print("🔁 Cache 30 dias do banco")
         return cache.resultado_json
-    else:
-        print("🚨 Cache 30 dias inválido ou vazio — recalculando")
 
     print("⚙️ Calculando nova performance dos últimos 30 dias...")
-
     resultado_geracao = []
     for api in apis:
-        geracao = api.get_geracao()
-        print(f"🔍 Resultado bruto de {api.__class__.__name__} (30 dias): {geracao}")
-        resultado_geracao += geracao.get("mensal", {}).get("por_usina", [])
+        resultado_geracao += api.get_geracao().get("30dias", {}).get("por_usina", [])
 
     resultados = [
         calcular_performance_30dias(g["ps_id"], g["energia_gerada_kWh"], db, cliente_id)
         for g in resultado_geracao
     ]
 
-    db.query(PerformanceCache).filter_by(cliente_id=cliente_id, tipo="30dias").delete()
     db.add(PerformanceCache(cliente_id=cliente_id, tipo="30dias", resultado_json=resultados))
     db.commit()
     return resultados
