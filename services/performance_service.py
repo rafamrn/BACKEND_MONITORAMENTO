@@ -108,100 +108,130 @@ def calcular_performance_30dias(plant_id: int, energia_gerada: float, db: Sessio
 # Obter performance diária
 def get_performance_diaria(apis, db, cliente_id, forcar=False):
     from models.performance_cache import PerformanceCache
-    if not forcar:
-        cache = (
-            db.query(PerformanceCache)
-            .filter_by(cliente_id=cliente_id, tipo="diaria")
-            .order_by(PerformanceCache.updated_at.desc())
-            .first()
-        )
-        if cache and (datetime.now() - cache.updated_at) < timedelta(hours=23):
-            print("🔁 Cache diária do banco")
-            return cache.resultado_json
 
-        print("⚙️ Calculando nova performance diária...")
+    cache = (
+        db.query(PerformanceCache)
+        .filter_by(cliente_id=cliente_id, tipo="diaria")
+        .order_by(PerformanceCache.updated_at.desc())
+        .first()
+    )
 
-        resultado_geracao = []
-        for api in apis:
-            try:
-                geracao = api.get_geracao()
-                print(f"🔍 Geração {api.__class__.__name__}: {geracao}")
-                resultado_geracao += geracao.get("diario", [])
-            except Exception as e:
-                print(f"❌ Erro ao obter geração de {api.__class__.__name__}: {e}")
+    if not forcar and cache and (datetime.now() - cache.updated_at) < timedelta(hours=23):
+        print("🔁 Cache diária do banco")
+        return cache.resultado_json
 
-        print("📦 Resultado de geração:", resultado_geracao)
+    print("⚙️ Calculando nova performance diária...")
 
-        resultados = []
-        for g in resultado_geracao:
-            try:
-                r = calcular_performance_diaria(g["ps_id"], g["energia_gerada_kWh"], db, cliente_id)
-                print("✅ Resultado performance:", r)
-                resultados.append(r)
-            except Exception as e:
-                print(f"❌ Erro ao calcular performance para {g}: {e}")
+    resultado_geracao = []
+    for api in apis:
+        try:
+            geracao = api.get_geracao()
+            print(f"🔍 Geração {api.__class__.__name__}: {geracao}")
+            resultado_geracao += geracao.get("diario", [])
+        except Exception as e:
+            print(f"❌ Erro ao obter geração de {api.__class__.__name__}: {e}")
 
-        if resultados:
-            db.add(PerformanceCache(cliente_id=cliente_id, tipo="diaria", resultado_json=resultados))
-            db.commit()
-            print("📝 Performance diária salva no cache com sucesso!")
-        else:
-            print("⚠️ Nenhum resultado válido para salvar no cache.")
+    print("📦 Resultado de geração:", resultado_geracao)
 
-        return resultados
+    resultados = []
+    for g in resultado_geracao:
+        try:
+            r = calcular_performance_diaria(g["ps_id"], g["energia_gerada_kWh"], db, cliente_id)
+            print("✅ Resultado performance:", r)
+            resultados.append(r)
+        except Exception as e:
+            print(f"❌ Erro ao calcular performance para {g}: {e}")
 
+    if resultados:
+        db.add(PerformanceCache(cliente_id=cliente_id, tipo="diaria", resultado_json=resultados))
+        db.commit()
+        print("📝 Performance diária salva no cache com sucesso!")
+    else:
+        print("⚠️ Nenhum resultado válido para salvar no cache.")
 
-def get_performance_7dias(apis: list, db: Session, cliente_id: int, forcar=False):
+    return resultados
+
+def get_performance_7dias(apis, db, cliente_id, forcar=False):
     from models.performance_cache import PerformanceCache
-    if not forcar:
-        cache = (
-            db.query(PerformanceCache)
-            .filter_by(cliente_id=cliente_id, tipo="7dias")
-            .order_by(PerformanceCache.updated_at.desc())
-            .first()
-        )
-        if cache and (datetime.now() - cache.updated_at) < timedelta(hours=23):
-            print("🔁 Cache 7 dias do banco")
-            return cache.resultado_json
 
-        print("⚙️ Calculando nova performance dos últimos 7 dias...")
-        resultado_geracao = []
-        for api in apis:
-            resultado_geracao += api.get_geracao().get("7dias", [])
+    cache = (
+        db.query(PerformanceCache)
+        .filter_by(cliente_id=cliente_id, tipo="7dias")
+        .order_by(PerformanceCache.updated_at.desc())
+        .first()
+    )
 
-        resultados = [
-            calcular_performance_7dias(g["ps_id"], g["energia_gerada_kWh"], db, cliente_id)
-            for g in resultado_geracao
-        ]
+    if not forcar and cache and (datetime.now() - cache.updated_at) < timedelta(hours=23):
+        print("🔁 Cache 7 dias do banco")
+        return cache.resultado_json
 
+    print("⚙️ Calculando nova performance dos últimos 7 dias...")
+
+    resultado_geracao = []
+    for api in apis:
+        try:
+            geracao = api.get_geracao()
+            resultado_geracao += geracao.get("7dias", [])
+        except Exception as e:
+            print(f"❌ Erro ao obter geração de {api.__class__.__name__}: {e}")
+
+    resultados = []
+    for g in resultado_geracao:
+        try:
+            r = calcular_performance_7dias(g["ps_id"], g["energia_gerada_kWh"], db, cliente_id)
+            print("✅ Resultado performance:", r)
+            resultados.append(r)
+        except Exception as e:
+            print(f"❌ Erro ao calcular performance para {g}: {e}")
+
+    if resultados:
         db.add(PerformanceCache(cliente_id=cliente_id, tipo="7dias", resultado_json=resultados))
         db.commit()
-        return resultados
+        print("📝 Performance 7 dias salva no cache com sucesso!")
+    else:
+        print("⚠️ Nenhum resultado válido para salvar no cache.")
+
+    return resultados
 
 
-def get_performance_30dias(apis: list, db: Session, cliente_id: int, forcar=False):
+def get_performance_30dias(apis, db, cliente_id, forcar=False):
     from models.performance_cache import PerformanceCache
-    if not forcar:
-        cache = (
-            db.query(PerformanceCache)
-            .filter_by(cliente_id=cliente_id, tipo="30dias")
-            .order_by(PerformanceCache.updated_at.desc())
-            .first()
-        )
-        if cache and (datetime.now() - cache.updated_at) < timedelta(hours=23):
-            print("🔁 Cache 30 dias do banco")
-            return cache.resultado_json
 
-        print("⚙️ Calculando nova performance dos últimos 30 dias...")
-        resultado_geracao = []
-        for api in apis:
-            resultado_geracao += api.get_geracao().get("30dias", {}).get("por_usina", [])
+    cache = (
+        db.query(PerformanceCache)
+        .filter_by(cliente_id=cliente_id, tipo="30dias")
+        .order_by(PerformanceCache.updated_at.desc())
+        .first()
+    )
 
-        resultados = [
-            calcular_performance_30dias(g["ps_id"], g["energia_gerada_kWh"], db, cliente_id)
-            for g in resultado_geracao
-        ]
+    if not forcar and cache and (datetime.now() - cache.updated_at) < timedelta(hours=23):
+        print("🔁 Cache 30 dias do banco")
+        return cache.resultado_json
 
+    print("⚙️ Calculando nova performance dos últimos 30 dias...")
+
+    resultado_geracao = []
+    for api in apis:
+        try:
+            geracao = api.get_geracao()
+            resultado_geracao += geracao.get("30dias", [])
+        except Exception as e:
+            print(f"❌ Erro ao obter geração de {api.__class__.__name__}: {e}")
+
+    resultados = []
+    for g in resultado_geracao:
+        try:
+            r = calcular_performance_30dias(g["ps_id"], g["energia_gerada_kWh"], db, cliente_id)
+            print("✅ Resultado performance:", r)
+            resultados.append(r)
+        except Exception as e:
+            print(f"❌ Erro ao calcular performance para {g}: {e}")
+
+    if resultados:
         db.add(PerformanceCache(cliente_id=cliente_id, tipo="30dias", resultado_json=resultados))
         db.commit()
-        return resultados
+        print("📝 Performance 30 dias salva no cache com sucesso!")
+    else:
+        print("⚠️ Nenhum resultado válido para salvar no cache.")
+
+    return resultados
