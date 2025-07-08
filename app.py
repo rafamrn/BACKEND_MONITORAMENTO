@@ -415,26 +415,27 @@ from utils import hash_sha256  # certifique-se de importar isso no topo
 from utils import get_apis_ativas
 @app.post("/forcar_calculo_performance")
 def forcar_performance(
-    plataforma: str,  # ← recebe o nome do fabricante (ex: "Sungrow", "Deye")
     db: Session = Depends(get_db),
     usuario_logado: User = Depends(get_current_user)
 ):
-    apis = get_apis_ativas(db, usuario_logado.id)
+    from services.performance_service import (
+        get_performance_diaria, get_performance_7dias, get_performance_30dias
+    )
+    from utils import get_apis_ativas
 
-    # Filtra somente a API correspondente à plataforma
-    apis_filtradas = [api for api in apis if api.__class__.__name__.lower().startswith(plataforma.lower())]
+    apis = get_apis_ativas(db, usuario_logado.id)  # ← busca todas APIs daquele cliente
 
-    if not apis_filtradas:
-        raise HTTPException(status_code=404, detail=f"Nenhuma API ativa encontrada para a plataforma {plataforma}")
+    if not apis:
+        raise HTTPException(status_code=404, detail="Nenhuma integração ativa encontrada.")
 
-    print(f"🚀 Recalculando performance para plataforma: {plataforma}")
+    print(f"🚀 Recalculando performance para cliente_id={usuario_logado.id}")
 
-    diaria = get_performance_diaria(apis_filtradas, db, usuario_logado.id, forcar=True)
-    dias7 = get_performance_7dias(apis_filtradas, db, usuario_logado.id, forcar=True)
-    dias30 = get_performance_30dias(apis_filtradas, db, usuario_logado.id, forcar=True)
+    diaria = get_performance_diaria(apis, db, usuario_logado.id, forcar=True)
+    dias7 = get_performance_7dias(apis, db, usuario_logado.id, forcar=True)
+    dias30 = get_performance_30dias(apis, db, usuario_logado.id, forcar=True)
 
     return {
-        "mensagem": f"Performance recalculada para {plataforma}.",
+        "mensagem": f"Performance recalculada para o cliente.",
         "diaria": diaria,
         "7dias": dias7,
         "30dias": dias30
