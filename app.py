@@ -134,33 +134,35 @@ def listar_usinas(
 ):
     usinas = []
 
-    # DEYE
-    try:
-        integracao_deye = get_integracao_por_plataforma(db, usuario_logado.id, "deye")
-        if integracao_deye:
-            print("✅ Integração Deye encontrada")
-            deye = ApiDeye(integracao=integracao_deye)
-            usinas += deye.get_usinas()
-        else:
-            print("⚠️ Nenhuma integração Deye encontrada")
-    except Exception as e:
-        print("❌ Erro ao buscar usinas Deye:", str(e))
+    # Busca todas as integrações desse usuário
+    integracoes = db.query(Integracao).filter_by(cliente_id=usuario_logado.id).all()
 
-    # SUNGROW (nome correto no banco é "Sungrow")
-    try:
-        print(f"🔎 Tentando buscar integração Sungrow para cliente ID: {usuario_logado.id}")
-        integracao_solar = get_integracao_por_plataforma(db, usuario_logado.id, "Sungrow")
-        print("🔁 Resultado:", integracao_solar)
-        if integracao_solar:
-            isolarcloud = ApiSolarCloud(db=db, integracao=integracao_solar)
-            usinas += isolarcloud.get_usinas()
-        else:
-            print("⚠️ Integração Sungrow não encontrada para o cliente.")
-    except Exception as e:
-        print("⚠️ Erro ao buscar usinas da Sungrow:", str(e))
+    if not integracoes:
+        print("⚠️ Nenhuma integração encontrada para o cliente.")
+        return []
+
+    for integracao in integracoes:
+        try:
+            print(f"🔍 Verificando integração: {integracao.plataforma}")
+            plataforma = integracao.plataforma.lower()
+
+            if plataforma == "sungrow":
+                client = ApiSolarCloud(db=db, integracao=integracao)
+            elif plataforma == "deye":
+                client = ApiDeye(db=db, integracao=integracao)
+            else:
+                print(f"⚠️ Plataforma não suportada: {plataforma}")
+                continue
+
+            usinas += client.get_usinas()
+
+        except Exception as e:
+            print(f"❌ Erro ao buscar usinas da plataforma {integracao.plataforma}:", e)
+            continue
 
     print(f"📦 Total de usinas retornadas: {len(usinas)}")
     return agrupar_usinas_por_nome(usinas)
+
 
 @app.get("/geracoes_diarias")
 def listar_geracoes_diarias(
@@ -258,29 +260,6 @@ def performance_30dias(
         )
 
     return get_performance_30dias(sungrow_api, deye_api, db, usuario_logado.id)
-
-@app.get("/testar_login_deye")
-def testar_login_deye(db: Session = Depends(get_db), usuario: User = Depends(get_current_user)):
-    integracao = db.query(Integracao).filter_by(cliente_id=usuario.id, plataforma="Deye").first()
-
-    if not integracao:
-        raise HTTPException(status_code=404, detail="Integração Deye não encontrada")
-
-    deye = ApiDeye(integracao=integracao, db=db)
-
-    token = deye.fazer_login()
-    if not token:
-        raise HTTPException(status_code=500, detail="Erro ao autenticar na Deye")
-
-    company_id = deye.get_company_id()
-    if not company_id:
-        raise HTTPException(status_code=500, detail="Erro ao obter companyId")
-
-    return {
-        "access_token": token,
-        "company_id": company_id
-    }
-
 
 @app.get("/dados_tecnicos")
 def obter_dados_tecnicos(
@@ -506,6 +485,54 @@ def atualizar_chaves_admin(id: int, payload: dict, db: Session = Depends(get_db)
     db.commit()
     db.refresh(integracao)
     return {"detail": "Chaves atualizadas com sucesso"}
+
+# ============== ⬇ TESTES ==============
+
+@app.get("/deye/geracao")
+def gerar_dados_deye(db: Session = Depends(get_db), usuario: User = Depends(get_current_user)):
+    integracao = db.query(Integracao).filter_by(cliente_id=usuario.id, plataforma="Deye").first()
+
+    if not integracao:
+        raise HTTPException(status_code=404, detail="Integração Deye não encontrada")
+
+    deye = ApiDeye(integracao=integracao, db=db)
+    dados = deye.get_geracao()
+
+    if not dados:
+        raise HTTPException(status_code=500, detail="Erro ao obter dados de geração Deye")
+
+    return dados
+
+@app.get("/deye/autenticar")
+def autenticar_deye(db: Session = Depends(get_db), usuario: User = Depends(get_current_user)):
+    integracao = db.query(Integracao).filter_by(cliente_id=usuario.id, plataforma="Deye").first()
+
+    if not integracao:
+        raise HTTPException(status_code=404, detail="Integração Deye não encontrada")
+
+    deye = ApiDeye(integracao=integracao, db=db)
+    token = deye.autenticar()
+
+    if not token:
+        raise HTTPException(status_code=500, detail="Falha na autenticação Deye")
+
+    return {
+        "access_token": token,
+        "company_id": integracao.companyid
+    }
+
+@app.get("/deye/usinas")
+def listar_usinas_deye(db: Session = Depends(get_db), usuario: User = Depends(get_current_user)):
+    integracao = db.query(Integracao).filter_by(cliente_id=usuario.id, plataforma="Deye").first()
+
+    if not integracao:
+        raise HTTPException(status_code=404, detail="Integração Deye não encontrada")
+
+    deye = ApiDeye(integracao=integracao, db=db)
+    usinas = deye.get_usinas()
+
+    return usinas
+
 
 # ============== ⬇ INCLUDES ==============
 

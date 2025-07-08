@@ -31,86 +31,110 @@ class ApiDeye:
         self._geracao_cache = None
         self._geracao_cache_timestamp = None
 
-    def fazer_login(self):
-        if self.accesstoken and (time.time() - self.last_token_time < self.cache_expiry):
-            return self.accesstoken  # Reutiliza token válido
 
-        url = self.base_url + f"account/token?appId={self.appid}"
-        body = {
+
+    def autenticar(self):
+        """
+        Verifica se já há token válido salvo no banco.
+        Caso contrário, faz:
+        1. login sem companyId,
+        2. obtém companyId,
+        3. login com companyId,
+        4. salva token final e companyId no banco.
+        """
+        TOKEN_EXPIRACAO_SEGUNDOS = 7200  # 2 horas
+
+        # ✅ 1. Verifica se já existe um token válido no banco
+        if self.integracao.token_acesso and self.integracao.token_updated_at:
+            tempo_passado = (datetime.utcnow() - self.integracao.token_updated_at).total_seconds()
+            if tempo_passado < TOKEN_EXPIRACAO_SEGUNDOS:
+                print("✅ Token Deye válido encontrado no banco — reutilizando")
+                self.accesstoken = self.integracao.token_acesso
+                return self.accesstoken
+
+        print("🔁 Nenhum token válido — iniciando nova autenticação Deye")
+
+        # 2. Primeiro login sem companyId
+        url_login_inicial = self.base_url + f"account/token?appId={self.appid}"
+        body_inicial = {
             "appSecret": self.appsecret,
             "email": self.username,
-            "password": self.password,
+            "password": self.password
         }
-        response = self.session.post(url, json=body, headers=self.headers_login)
 
-        if response.status_code != 200:
-            print("Erro ao autenticar na API Deye:", response.status_code)
-            print(response.text)
+        resp_inicial = self.session.post(url_login_inicial, json=body_inicial, headers=self.headers_login)
+        if resp_inicial.status_code != 200:
+            print("❌ Erro no primeiro login Deye:", resp_inicial.status_code)
+            print(resp_inicial.text)
             return None
 
-        dados = response.json()
-
-        try:
-            self.accesstoken = dados["accessToken"]
-            self.last_token_time = time.time()
-            print("Token Deye obtido com sucesso:", self.accesstoken)
-            return self.accesstoken
-        except KeyError:
-            print("Erro ao extrair token Deye:", dados)
+        token_temporario = resp_inicial.json().get("accessToken")
+        if not token_temporario:
+            print("❌ Token temporário ausente na resposta inicial.")
             return None
 
-    def get_company_id(self):
-        """
-        Obtém o companyId da conta Deye e salva na integração no banco.
-        """
-        if not self.fazer_login():
-            print("❌ Falha ao obter token antes de buscar companyId")
-            return None
-
-        url = self.base_url + "account/info"
-        headers = {
-            "Authorization": f"Bearer {self.accesstoken}",
+        # 3. Obter companyId
+        url_info = self.base_url + "account/info"
+        headers_info = {
+            "Authorization": f"Bearer {token_temporario}",
             "Content-Type": "application/json"
         }
 
-        response = self.session.post(url, headers=headers)
-
-        if response.status_code != 200:
-            print("❌ Erro ao obter companyId:", response.status_code)
-            print(response.text)
+        resp_info = self.session.post(url_info, headers=headers_info)
+        if resp_info.status_code != 200:
+            print("❌ Erro ao buscar companyId:", resp_info.status_code)
+            print(resp_info.text)
             return None
 
-        try:
-            dados = response.json()
-            orgs = dados.get("orgInfoList", [])
-            if not orgs:
-                print("⚠️ Nenhuma organização encontrada na resposta.")
-                return None
-
-            company_id = str(orgs[0].get("companyId"))
-            print("✅ companyId obtido:", company_id)
-
-            # Salva no banco, se for possível
-            if hasattr(self, "integracao") and hasattr(self, "db"):
-                self.integracao.companyid = company_id
-                self.db.commit()
-                self.db.refresh(self.integracao)
-                print("💾 companyId salvo no banco de dados.")
-
-            return company_id
-
-        except Exception as e:
-            print("❌ Erro ao processar resposta do companyId:", str(e))
+        orgs = resp_info.json().get("orgInfoList", [])
+        if not orgs:
+            print("⚠️ Nenhum companyId encontrado.")
             return None
+
+        company_id = str(orgs[0].get("companyId"))
+        print("🏢 companyId obtido:", company_id)
+
+        # 4. Login final com companyId
+        body_final = {
+            "appSecret": self.appsecret,
+            "email": self.username,
+            "password": self.password,
+            "companyId": company_id
+        }
+
+        resp_final = self.session.post(url_login_inicial, json=body_final, headers=self.headers_login)
+        if resp_final.status_code != 200:
+            print("❌ Erro no login final com companyId:", resp_final.status_code)
+            print(resp_final.text)
+            return None
+
+        token_final = resp_final.json().get("accessToken")
+        if not token_final:
+            print("❌ Erro ao obter token final.")
+            return None
+
+        # 5. Salvar token e companyId no banco
+        self.integracao.companyid = company_id
+        self.integracao.token_acesso = token_final
+        self.integracao.token_updated_at = datetime.utcnow()
+        self.db.commit()
+        self.db.refresh(self.integracao)
+
+        self.accesstoken = token_final
+        self.last_token_time = time.time()
+
+        print("✅ Autenticação Deye concluída com sucesso — novo token salvo")
+        return token_final
+
 
     def get_usinas(self):
-        # Garante token válido
-        if not self.fazer_login():
+        # 🔐 Garante token válido com fluxo completo
+        if not self.autenticar():
             return []
 
         headers = {
             'Content-Type': 'application/json',
-            'Authorization': f"bearer {self.accesstoken}"
+            'Authorization': f"Bearer {self.accesstoken}"
         }
 
         if self.cached_data and time.time() - self.last_cache_time < self.cache_expiry:
@@ -119,12 +143,12 @@ class ApiDeye:
         url = self.base_url + "station/list"
         body = {
             "page": 1,
-            "size": 50
+            "size": 50,
         }
 
         response = self.session.post(url, json=body, headers=headers)
         if response.status_code != 200:
-            print("Erro ao buscar usinas:", response.status_code, response.text)
+            print("❌ Erro ao buscar usinas:", response.status_code, response.text)
             return []
 
         dados = response.json()
@@ -142,11 +166,10 @@ class ApiDeye:
                         "stationId": usina.get("id"),
                         "startAt": hoje,
                         "endAt": amanha,
-                        "granularity": 2
+                        "granularity": 2,
                     }
 
                     response_energy = self.session.post(url_energy, json=body_energy, headers=headers)
-
                     if response_energy.status_code == 200:
                         energy_data = response_energy.json()
                         items = energy_data.get("stationDataItems", [])
@@ -154,7 +177,8 @@ class ApiDeye:
                             today_energy = round(float(items[0].get("generationValue", 0.0)), 2)
 
                 except Exception as e:
-                    print(f"Erro ao buscar today_energy para usina {usina.get('id')}: {e}")
+                    print(f"⚠️ Erro ao buscar today_energy para usina {usina.get('id')}: {e}")
+
                 try:
                     curr_power = float(usina.get("generationPower", 0))
                 except (ValueError, TypeError):
@@ -171,10 +195,10 @@ class ApiDeye:
                     fault_status = 3
                 elif raw_status == "ALARM":
                     fault_status = 2
-                elif raw_status == "ERROR":
+                elif raw_status == "ERROR" or raw_status == "ALL_OFFLINE":
                     fault_status = 1
-                elif raw_status == "ALL_OFFLINE":
-                    fault_status = 1
+                else:
+                    fault_status = 0
 
                 dados_usinas.append({
                     "ps_id": usina.get("id"),
@@ -190,12 +214,13 @@ class ApiDeye:
                 })
 
         except Exception as e:
-            print("Erro ao processar dados das usinas:", e)
+            print("❌ Erro ao processar dados das usinas:", e)
             return []
 
         self.cached_data = dados_usinas
         self.last_cache_time = time.time()
         return dados_usinas
+
     
     # OBTENDO PS_KEYS E SERIAL NUMBER E DEMAIS DADOS
 
@@ -204,12 +229,14 @@ class ApiDeye:
         brasil = timezone("America/Sao_Paulo")
         agora = datetime.now(brasil)
 
+        # 🔁 Cache local (10 minutos)
         if self._geracao_cache and self._geracao_cache_timestamp:
             if (agora - self._geracao_cache_timestamp) < timedelta(minutes=10):
-                print("🔁 Retornando geração do cache diário")
+                print("🔁 Retornando geração do cache local")
                 return self._geracao_cache
 
-        if not self.fazer_login():
+        # 🔐 Garante token atualizado e válido
+        if not self.autenticar():
             return []
 
         usinas = self.get_usinas()
@@ -218,9 +245,10 @@ class ApiDeye:
 
         headers = {
             'Content-Type': 'application/json',
-            'Authorization': f"bearer {self.accesstoken}"
+            'Authorization': f"Bearer {self.accesstoken}"
         }
 
+        # Datas para os 3 períodos
         hoje = agora.strftime("%Y-%m-%d")
         ontem = (agora - timedelta(days=1)).strftime("%Y-%m-%d")
         anteontem = (agora - timedelta(days=2)).strftime("%Y-%m-%d")
@@ -236,33 +264,30 @@ class ApiDeye:
             if not ps_id:
                 continue
 
-
-            #DIÁRIO
             url = self.base_url + "station/history"
+
             body_diario = {
                 "stationId": ps_id,
-                "endAt": ontem,
-                "granularity": 2,
                 "startAt": anteontem,
+                "endAt": ontem,
+                "granularity": 2
             }
 
-            #SEMANAL
             body_7dias = {
                 "stationId": ps_id,
-                "endAt": ontem,
-                "granularity": 2,
                 "startAt": sete_dias_atras,
-        }
+                "endAt": ontem,
+                "granularity": 2
+            }
 
             body_30dias = {
                 "stationId": ps_id,
-                "endAt": ontem,
-                "granularity": 2,
                 "startAt": trinta_dias_atras,
+                "endAt": ontem,
+                "granularity": 2
             }
 
             try:
-            
                 # Diária
                 res_d = self.session.post(url, json=body_diario, headers=headers)
                 if res_d.status_code == 200:
