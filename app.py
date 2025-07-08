@@ -266,13 +266,20 @@ def testar_login_deye(db: Session = Depends(get_db), usuario: User = Depends(get
     if not integracao:
         raise HTTPException(status_code=404, detail="Integração Deye não encontrada")
 
-    deye = ApiDeye(integracao)
-    token = deye.fazer_login()
+    deye = ApiDeye(integracao=integracao, db=db)
 
+    token = deye.fazer_login()
     if not token:
         raise HTTPException(status_code=500, detail="Erro ao autenticar na Deye")
 
-    return {"access_token": token}
+    company_id = deye.get_company_id()
+    if not company_id:
+        raise HTTPException(status_code=500, detail="Erro ao obter companyId")
+
+    return {
+        "access_token": token,
+        "company_id": company_id
+    }
 
 
 @app.get("/dados_tecnicos")

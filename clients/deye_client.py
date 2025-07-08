@@ -5,16 +5,19 @@ from utils import parse_float
 from datetime import datetime, timedelta
 from pytz import timezone
 from modelos import Integracao
+from sqlalchemy.orm import Session
 
 class ApiDeye:
     base_url = "https://us1-developer.deyecloud.com/v1.0/"
     cache_expiry = 600 # 10 minutos
-    companyId = 5402
     headers_login = {
         'Content-Type': 'application/json'
     }
+    
+    def __init__(self, integracao: Integracao, db: Session):
+        self.db = db
+        self.integracao = integracao
 
-    def __init__(self, integracao: Integracao):
         self.username = integracao.username
         self.password = integracao.senha
         self.appid = integracao.appid
@@ -56,7 +59,49 @@ class ApiDeye:
             print("Erro ao extrair token Deye:", dados)
             return None
 
+    def get_company_id(self):
+        """
+        Obtém o companyId da conta Deye e salva na integração no banco.
+        """
+        if not self.fazer_login():
+            print("❌ Falha ao obter token antes de buscar companyId")
+            return None
 
+        url = self.base_url + "account/info"
+        headers = {
+            "Authorization": f"Bearer {self.accesstoken}",
+            "Content-Type": "application/json"
+        }
+
+        response = self.session.get(url, headers=headers)
+
+        if response.status_code != 200:
+            print("❌ Erro ao obter companyId:", response.status_code)
+            print(response.text)
+            return None
+
+        try:
+            dados = response.json()
+            orgs = dados.get("orgInfoList", [])
+            if not orgs:
+                print("⚠️ Nenhuma organização encontrada na resposta.")
+                return None
+
+            company_id = str(orgs[0].get("companyId"))
+            print("✅ companyId obtido:", company_id)
+
+            # Salva no banco, se for possível
+            if hasattr(self, "integracao") and hasattr(self, "db"):
+                self.integracao.companyid = company_id
+                self.db.commit()
+                self.db.refresh(self.integracao)
+                print("💾 companyId salvo no banco de dados.")
+
+            return company_id
+
+        except Exception as e:
+            print("❌ Erro ao processar resposta do companyId:", str(e))
+            return None
 
     def get_usinas(self):
         # Garante token válido
