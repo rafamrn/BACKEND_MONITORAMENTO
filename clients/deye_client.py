@@ -37,7 +37,6 @@ class ApiDeye:
             "appSecret": self.appsecret,
             "email": self.username,
             "password": self.password,
-            "companyId": self.companyId
         }
         response = self.session.post(url, json=body, headers=self.headers_login)
 

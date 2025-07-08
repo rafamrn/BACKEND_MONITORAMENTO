@@ -259,6 +259,21 @@ def performance_30dias(
 
     return get_performance_30dias(sungrow_api, deye_api, db, usuario_logado.id)
 
+@app.get("/testar_login_deye")
+def testar_login_deye(db: Session = Depends(get_db), usuario: User = Depends(get_current_user)):
+    integracao = db.query(Integracao).filter_by(cliente_id=usuario.id, plataforma="Deye").first()
+
+    if not integracao:
+        raise HTTPException(status_code=404, detail="Integração Deye não encontrada")
+
+    deye = ApiDeye(integracao)
+    token = deye.fazer_login()
+
+    if not token:
+        raise HTTPException(status_code=500, detail="Erro ao autenticar na Deye")
+
+    return {"access_token": token}
+
 
 @app.get("/dados_tecnicos")
 def obter_dados_tecnicos(
