@@ -478,6 +478,9 @@ def atualizar_chaves_admin(id: int, payload: dict, db: Session = Depends(get_db)
         raise HTTPException(status_code=404, detail="Integração não encontrada")
     integracao.appkey = payload.get("appkey")
     integracao.x_access_key = payload.get("x_access_key")
+    integracao.appid = payload.get("appid")
+    integracao.appsecret = payload.get("appsecret")
+    
     db.commit()
     db.refresh(integracao)
     return {"detail": "Chaves atualizadas com sucesso"}
