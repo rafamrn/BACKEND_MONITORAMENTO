@@ -424,15 +424,18 @@ def forcar_performance(
     from utils import get_apis_ativas
 
     apis = get_apis_ativas(db, usuario_logado.id)
-    diaria = get_performance_diaria(apis, db, usuario_logado.id)
-    dias7 = get_performance_7dias(apis, db, usuario_logado.id)
-    dias30 = get_performance_30dias(apis, db, usuario_logado.id)
+
+    diaria = get_performance_diaria(apis, db, usuario_logado.id, forcar=True)
+    dias7 = get_performance_7dias(apis, db, usuario_logado.id, forcar=True)
+    dias30 = get_performance_30dias(apis, db, usuario_logado.id, forcar=True)
+
     return {
-        "mensagem": "Performance recalculada com sucesso.",
+        "mensagem": "✅ Performance recalculada com sucesso.",
         "diaria": diaria,
         "7dias": dias7,
         "30dias": dias30
     }
+
 
 @integracao_router.post("/")
 def criar_integracao(
