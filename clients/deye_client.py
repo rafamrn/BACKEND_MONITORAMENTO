@@ -4,7 +4,7 @@ import time
 from utils import parse_float
 from datetime import datetime, timedelta
 from pytz import timezone
-
+from modelos import Integracao
 
 class ApiDeye:
     base_url = "https://us1-developer.deyecloud.com/v1.0/"
@@ -14,11 +14,12 @@ class ApiDeye:
         'Content-Type': 'application/json'
     }
 
-    def __init__(self, username, password, appid, appsecret):
-        self.username = username
-        self.password = password
-        self.appid = appid
-        self.appsecret = appsecret
+    def __init__(self, integracao: Integracao):
+        self.username = integracao.username
+        self.password = integracao.senha
+        self.appid = integracao.appid
+        self.appsecret = integracao.appsecret
+        self.companyId = integracao.companyid  # ← caso você queira usar dinamicamente
         self.accesstoken = None
         self.last_token_time = 0
         self.cached_data = None

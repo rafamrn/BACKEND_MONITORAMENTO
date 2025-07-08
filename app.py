@@ -43,6 +43,7 @@ from rotas import solarcloud_routes
 from passlib.hash import bcrypt
 from clients.isolarcloud_client import ApiSolarCloud
 from services.scheduler import start_scheduler
+from utils import hash_sha256
 
 # ============== ⬇ APP ==============
 app = FastAPI()
@@ -129,24 +130,24 @@ def obter_alarmes_historico(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao obter alarmes históricos: {str(e)}")
 
-@app.get("/usina", response_model=List[UsinaModel])
-def listar_usinas(usuario_logado: User = Depends(get_current_user), db: Session = Depends(get_db)):
+@app.get("/usina")
+def listar_usinas(
+    usuario_logado: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     usinas = []
 
     # DEYE
     try:
         integracao_deye = get_integracao_por_plataforma(db, usuario_logado.id, "deye")
-        print("🔎 Integração Deye:", integracao_deye)
         if integracao_deye:
-            deye = ApiDeye(
-                username=integracao_deye.username,
-                password=integracao_deye.senha
-            )
+            print("✅ Integração Deye encontrada")
+            deye = ApiDeye(integracao=integracao_deye)
             usinas += deye.get_usinas()
         else:
-            print("⚠️ Integração Deye não encontrada.")
+            print("⚠️ Nenhuma integração Deye encontrada")
     except Exception as e:
-        print("⚠️ Erro ao buscar usinas da Deye:", str(e))
+        print("❌ Erro ao buscar usinas Deye:", str(e))
 
     # SUNGROW (nome correto no banco é "Sungrow")
     try:
@@ -425,8 +426,15 @@ def deletar_cliente(cliente_id: int, db: Session = Depends(get_db)):
 
 integracao_router = APIRouter(prefix="/integracoes", tags=["Integrações"])
 
+from utils import hash_sha256  # certifique-se de importar isso no topo
+
 @integracao_router.post("/")
-def criar_integracao(integracao: IntegracaoCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def criar_integracao(
+    integracao: IntegracaoCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user)
+):
+    # Cria a integração com a senha pura
     nova = Integracao(
         cliente_id=user.id,
         nome=user.name,
@@ -437,7 +445,14 @@ def criar_integracao(integracao: IntegracaoCreate, db: Session = Depends(get_db)
     db.add(nova)
     db.commit()
     db.refresh(nova)
+
+    # Se for Deye, converte a senha em SHA256 e atualiza
+    if integracao.plataforma.lower() == "deye":
+        nova.senha = hash_sha256(integracao.senha)
+        db.commit()
+
     return {"message": "Integração salva com sucesso", "id": nova.id}
+
 
 @integracao_router.get("/", response_model=List[IntegracaoOut])
 def listar_integracoes(db: Session = Depends(get_db), user: User = Depends(get_current_user)):

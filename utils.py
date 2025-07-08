@@ -4,8 +4,15 @@ from typing import List
 from passlib.context import CryptContext
 from modelos import Integracao
 from sqlalchemy.orm import Session
+import hashlib
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def hash_sha256(password: str) -> str:
+    """
+    Retorna o hash SHA256 da senha em minúsculas.
+    """
+    return hashlib.sha256(password.encode('utf-8')).hexdigest()
 
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
