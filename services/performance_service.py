@@ -143,6 +143,9 @@ def get_performance_diaria(apis, db, cliente_id, forcar=False):
             print(f"❌ Erro ao calcular performance para {g}: {e}")
 
     if resultados:
+        # 🔥 Remove o cache antigo antes de adicionar o novo
+        db.query(PerformanceCache).filter_by(cliente_id=cliente_id, tipo="diaria").delete()
+
         db.add(PerformanceCache(cliente_id=cliente_id, tipo="diaria", resultado_json=resultados))
         db.commit()
         print("📝 Performance diária salva no cache com sucesso!")
@@ -150,6 +153,7 @@ def get_performance_diaria(apis, db, cliente_id, forcar=False):
         print("⚠️ Nenhum resultado válido para salvar no cache.")
 
     return resultados
+
 
 def get_performance_7dias(apis, db, cliente_id, forcar=False):
     from models.performance_cache import PerformanceCache
@@ -185,6 +189,7 @@ def get_performance_7dias(apis, db, cliente_id, forcar=False):
             print(f"❌ Erro ao calcular performance para {g}: {e}")
 
     if resultados:
+        db.query(PerformanceCache).filter_by(cliente_id=cliente_id, tipo="7dias").delete()
         db.add(PerformanceCache(cliente_id=cliente_id, tipo="7dias", resultado_json=resultados))
         db.commit()
         print("📝 Performance 7 dias salva no cache com sucesso!")
@@ -192,6 +197,7 @@ def get_performance_7dias(apis, db, cliente_id, forcar=False):
         print("⚠️ Nenhum resultado válido para salvar no cache.")
 
     return resultados
+
 
 
 def get_performance_30dias(apis, db, cliente_id, forcar=False):
@@ -214,10 +220,7 @@ def get_performance_30dias(apis, db, cliente_id, forcar=False):
     for api in apis:
         try:
             geracao = api.get_geracao()
-            if isinstance(geracao.get("30dias"), dict):
-                resultado_geracao += geracao["30dias"].get("por_usina", [])
-            else:
-                print(f"⚠️ Formato inesperado em 30dias de {api.__class__.__name__}")
+            resultado_geracao += geracao.get("30dias", {}).get("por_usina", [])
         except Exception as e:
             print(f"❌ Erro ao obter geração de {api.__class__.__name__}: {e}")
 
@@ -231,6 +234,7 @@ def get_performance_30dias(apis, db, cliente_id, forcar=False):
             print(f"❌ Erro ao calcular performance para {g}: {e}")
 
     if resultados:
+        db.query(PerformanceCache).filter_by(cliente_id=cliente_id, tipo="30dias").delete()
         db.add(PerformanceCache(cliente_id=cliente_id, tipo="30dias", resultado_json=resultados))
         db.commit()
         print("📝 Performance 30 dias salva no cache com sucesso!")
@@ -238,3 +242,4 @@ def get_performance_30dias(apis, db, cliente_id, forcar=False):
         print("⚠️ Nenhum resultado válido para salvar no cache.")
 
     return resultados
+
