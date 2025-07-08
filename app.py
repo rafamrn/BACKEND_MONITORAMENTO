@@ -5,6 +5,7 @@ from fastapi.responses import FileResponse
 from fastapi.encoders import jsonable_encoder
 from fastapi.security import OAuth2PasswordRequestForm
 from starlette.middleware.trustedhost import TrustedHostMiddleware
+from services.performance_service import calcular_performance_diaria
 from utils import get_integracao_por_plataforma
 from services.performance_service import (
     get_performance_diaria,
@@ -202,64 +203,50 @@ def performance_diaria(
     db: Session = Depends(get_db),
     usuario_logado: User = Depends(get_current_user)
 ):
+    apis = []
     integracao_sungrow = get_integracao_por_plataforma(db, usuario_logado.id, "Sungrow")
-    integracao_deye = get_integracao_por_plataforma(db, usuario_logado.id, "deye")
-
-    sungrow_api = None
-    deye_api = None
+    integracao_deye = get_integracao_por_plataforma(db, usuario_logado.id, "Deye")
 
     if integracao_sungrow:
-        sungrow_api = ApiSolarCloud(db=db, integracao=integracao_sungrow)
-
+        apis.append(ApiSolarCloud(db=db, integracao=integracao_sungrow))
     if integracao_deye:
-        deye_api = ApiDeye(
-            username=integracao_deye.username,
-            password=integracao_deye.senha
-        )
+        apis.append(ApiDeye(integracao=integracao_deye, db=db))
 
-    return get_performance_diaria(sungrow_api, deye_api, db, usuario_logado.id)
+    return get_performance_diaria(apis, db, usuario_logado.id)
 
 
 
 @app.get("/performance_7dias")
-def performance_7dias(db: Session = Depends(get_db), usuario_logado: User = Depends(get_current_user)):
+def performance_7dias(
+    db: Session = Depends(get_db),
+    usuario_logado: User = Depends(get_current_user)
+):
+    apis = []
     integracao_sungrow = get_integracao_por_plataforma(db, usuario_logado.id, "Sungrow")
-    integracao_deye = get_integracao_por_plataforma(db, usuario_logado.id, "deye")
-
-    sungrow_api = None
-    deye_api = None
+    integracao_deye = get_integracao_por_plataforma(db, usuario_logado.id, "Deye")
 
     if integracao_sungrow:
-        sungrow_api = ApiSolarCloud(db=db, integracao=integracao_sungrow)
-
+        apis.append(ApiSolarCloud(db=db, integracao=integracao_sungrow))
     if integracao_deye:
-        deye_api = ApiDeye(
-            username=integracao_deye.username,
-            password=integracao_deye.senha
-        )
+        apis.append(ApiDeye(integracao=integracao_deye, db=db))
 
-    return get_performance_7dias(sungrow_api, deye_api, db, usuario_logado.id)
+    return get_performance_7dias(apis, db, usuario_logado.id)
 
 @app.get("/performance_30dias")
 def performance_30dias(
     db: Session = Depends(get_db),
     usuario_logado: User = Depends(get_current_user)
 ):
+    apis = []
     integracao_sungrow = get_integracao_por_plataforma(db, usuario_logado.id, "Sungrow")
-    integracao_deye = get_integracao_por_plataforma(db, usuario_logado.id, "deye")
-
-    sungrow_api = None
-    deye_api = None
+    integracao_deye = get_integracao_por_plataforma(db, usuario_logado.id, "Deye")
 
     if integracao_sungrow:
-        sungrow_api = ApiSolarCloud(db=db, integracao=integracao_sungrow)
+        apis.append(ApiSolarCloud(db=db, integracao=integracao_sungrow))
     if integracao_deye:
-        deye_api = ApiDeye(
-            username=integracao_deye.username,
-            password=integracao_deye.senha
-        )
+        apis.append(ApiDeye(integracao=integracao_deye, db=db))
 
-    return get_performance_30dias(sungrow_api, deye_api, db, usuario_logado.id)
+    return get_performance_30dias(apis, db, usuario_logado.id)
 
 @app.get("/dados_tecnicos")
 def obter_dados_tecnicos(
@@ -488,51 +475,14 @@ def atualizar_chaves_admin(id: int, payload: dict, db: Session = Depends(get_db)
 
 # ============== ⬇ TESTES ==============
 
-@app.get("/deye/geracao")
-def gerar_dados_deye(db: Session = Depends(get_db), usuario: User = Depends(get_current_user)):
-    integracao = db.query(Integracao).filter_by(cliente_id=usuario.id, plataforma="Deye").first()
-
-    if not integracao:
-        raise HTTPException(status_code=404, detail="Integração Deye não encontrada")
-
-    deye = ApiDeye(integracao=integracao, db=db)
-    dados = deye.get_geracao()
-
-    if not dados:
-        raise HTTPException(status_code=500, detail="Erro ao obter dados de geração Deye")
-
-    return dados
-
-@app.get("/deye/autenticar")
-def autenticar_deye(db: Session = Depends(get_db), usuario: User = Depends(get_current_user)):
-    integracao = db.query(Integracao).filter_by(cliente_id=usuario.id, plataforma="Deye").first()
-
-    if not integracao:
-        raise HTTPException(status_code=404, detail="Integração Deye não encontrada")
-
-    deye = ApiDeye(integracao=integracao, db=db)
-    token = deye.autenticar()
-
-    if not token:
-        raise HTTPException(status_code=500, detail="Falha na autenticação Deye")
-
-    return {
-        "access_token": token,
-        "company_id": integracao.companyid
-    }
-
-@app.get("/deye/usinas")
-def listar_usinas_deye(db: Session = Depends(get_db), usuario: User = Depends(get_current_user)):
-    integracao = db.query(Integracao).filter_by(cliente_id=usuario.id, plataforma="Deye").first()
-
-    if not integracao:
-        raise HTTPException(status_code=404, detail="Integração Deye não encontrada")
-
-    deye = ApiDeye(integracao=integracao, db=db)
-    usinas = deye.get_usinas()
-
-    return usinas
-
+@app.get("/teste/performance_diaria")
+def testar_performance_diaria(
+    plant_id: int = Query(...),
+    energia_gerada: float = Query(...),
+    db: Session = Depends(get_db),
+    usuario_logado: User = Depends(get_current_user)
+):
+    return calcular_performance_diaria(plant_id, energia_gerada, db, usuario_logado.id)
 
 # ============== ⬇ INCLUDES ==============
 
