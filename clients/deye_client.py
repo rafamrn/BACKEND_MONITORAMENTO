@@ -73,7 +73,7 @@ class ApiDeye:
             "Content-Type": "application/json"
         }
 
-        response = self.session.get(url, headers=headers)
+        response = self.session.post(url, headers=headers)
 
         if response.status_code != 200:
             print("❌ Erro ao obter companyId:", response.status_code)
