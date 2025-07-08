@@ -412,6 +412,33 @@ def deletar_cliente(cliente_id: int, db: Session = Depends(get_db)):
 integracao_router = APIRouter(prefix="/integracoes", tags=["Integrações"])
 
 from utils import hash_sha256  # certifique-se de importar isso no topo
+from utils import get_apis_ativas
+@app.post("/forcar_calculo_performance")
+def forcar_performance(
+    plataforma: str,  # ← recebe o nome do fabricante (ex: "Sungrow", "Deye")
+    db: Session = Depends(get_db),
+    usuario_logado: User = Depends(get_current_user)
+):
+    apis = get_apis_ativas(db, usuario_logado.id)
+
+    # Filtra somente a API correspondente à plataforma
+    apis_filtradas = [api for api in apis if api.__class__.__name__.lower().startswith(plataforma.lower())]
+
+    if not apis_filtradas:
+        raise HTTPException(status_code=404, detail=f"Nenhuma API ativa encontrada para a plataforma {plataforma}")
+
+    print(f"🚀 Recalculando performance para plataforma: {plataforma}")
+
+    diaria = get_performance_diaria(apis_filtradas, db, usuario_logado.id, forcar=True)
+    dias7 = get_performance_7dias(apis_filtradas, db, usuario_logado.id, forcar=True)
+    dias30 = get_performance_30dias(apis_filtradas, db, usuario_logado.id, forcar=True)
+
+    return {
+        "mensagem": f"Performance recalculada para {plataforma}.",
+        "diaria": diaria,
+        "7dias": dias7,
+        "30dias": dias30
+    }
 
 @integracao_router.post("/")
 def criar_integracao(
