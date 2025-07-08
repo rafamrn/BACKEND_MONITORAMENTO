@@ -42,7 +42,7 @@ class Integracao(Base):
 
     appid = Column(String, nullable=True)        # ✅ adicionado
     appsecret = Column(String, nullable=True)    # ✅ adicionado
-    companyid = Column(String, nullabla=True)
+    companyid = Column(String, nullable=True)
     cliente = relationship("User", back_populates="integracoes")
 
 
