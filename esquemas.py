@@ -59,7 +59,9 @@ class IntegracaoOut(BaseModel):
     senha: str
     appkey: Optional[str] = None
     x_access_key: Optional[str] = None
-    nome: Optional[str] = None  # nome do cliente via relação
+    nome: Optional[str] = None
+    appid: Optional[str] = None           # ✅ adicionado
+    appsecret: Optional[str] = None       # ✅ adicionado
 
     class Config:
         from_attributes = True

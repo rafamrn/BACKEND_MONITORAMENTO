@@ -38,8 +38,13 @@ class Integracao(Base):
     appkey = Column(String, nullable=True)
     token_acesso = Column(String, nullable=True)
     token_expira_em = Column(DateTime, nullable=True)
-    token_updated_at = Column(DateTime)
+    token_updated_at = Column(DateTime, nullable=True)
+
+    appid = Column(String, nullable=True)        # ✅ adicionado
+    appsecret = Column(String, nullable=True)    # ✅ adicionado
+
     cliente = relationship("User", back_populates="integracoes")
+
 
     
 class Convite(Base):
