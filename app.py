@@ -67,9 +67,6 @@ app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
 
 # ============== ⬇ CLIENTES DAS APIS ==============
 huawei = ApiHuawei(settings.HUAWEI_USER, settings.HUAWEI_PASS)
-deye = ApiDeye(settings.DEYE_USER, settings.DEYE_PASS, settings.DEYE_APPID, settings.DEYE_APPSECRET)
-
-
 
 start_scheduler()
 
