@@ -323,8 +323,8 @@ class ApiDeye:
 
         resultado = {
             "diario": diario,
-            "setedias": setedias,
-            "mensal": {
+            "7dias": setedias,
+            "30dias": {
                 "total": round(total_30dias, 2),
                 "por_usina": mensal
             }
