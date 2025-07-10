@@ -30,7 +30,6 @@ from esquemas import (
 from utils import agrupar_usinas_por_nome, hash_password, verify_password
 from auth import create_access_token, decode_access_token
 from dependencies import get_current_admin_user, get_current_user
-from config.settings import settings
 from services.performance_service import (
     get_performance_diaria, get_performance_7dias, get_performance_30dias
 )
