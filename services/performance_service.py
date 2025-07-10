@@ -3,6 +3,7 @@ from models.monthly_projection import MonthlyProjection
 from datetime import datetime, timedelta
 import calendar
 from models.performance_cache import PerformanceCache
+import json
 
 
 # Cache global
@@ -147,8 +148,11 @@ def get_performance_diaria(apis, db, cliente_id, forcar=False, apenas_plant_id=N
     if resultados:
         # 🔥 Remove o cache antigo antes de adicionar o novo
         db.query(PerformanceCache).filter_by(cliente_id=cliente_id, tipo="diaria").delete()
-
-        db.add(PerformanceCache(cliente_id=cliente_id, tipo="diaria", resultado_json=resultados))
+        db.add(PerformanceCache(
+            cliente_id=cliente_id,
+            tipo="diaria",
+            resultado_json=json.dumps(resultados)  # ✅ Serialização correta
+        ))
         db.commit()
         print("📝 Performance diária salva no cache com sucesso!")
     else:
