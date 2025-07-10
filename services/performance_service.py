@@ -108,8 +108,6 @@ def calcular_performance_30dias(plant_id: int, energia_gerada: float, db: Sessio
 
 # Obter performance diária
 def get_performance_diaria(apis, db, cliente_id, forcar=False, apenas_plant_id=None):
-    from models.performance_cache import PerformanceCache
-
     cache = (
         db.query(PerformanceCache)
         .filter_by(cliente_id=cliente_id, tipo="diaria")
@@ -134,36 +132,40 @@ def get_performance_diaria(apis, db, cliente_id, forcar=False, apenas_plant_id=N
 
     print("📦 Resultado de geração:", resultado_geracao)
 
-    resultados = []
+    novos_resultados = []
     for g in resultado_geracao:
         if apenas_plant_id and g["ps_id"] != apenas_plant_id:
             continue
         try:
             r = calcular_performance_diaria(g["ps_id"], g["energia_gerada_kWh"], db, cliente_id)
             print("✅ Resultado performance:", r)
-            resultados.append(r)
+            novos_resultados.append(r)
         except Exception as e:
             print(f"❌ Erro ao calcular performance para {g}: {e}")
 
-    if resultados:
-        # 🔥 Remove o cache antigo antes de adicionar o novo
-        db.query(PerformanceCache).filter_by(cliente_id=cliente_id, tipo="diaria").delete()
+    # Mantém dados anteriores e só substitui os plant_ids alterados
+    antigos = cache.resultado_json if cache else []
+    novos_ids = {r["plant_id"] for r in novos_resultados}
+    preservados = [r for r in antigos if r["plant_id"] not in novos_ids]
+    resultado_final = preservados + novos_resultados
+
+    if cache:
+        cache.resultado_json = resultado_final
+        cache.updated_at = datetime.now()
+    else:
         db.add(PerformanceCache(
             cliente_id=cliente_id,
             tipo="diaria",
-            resultado_json=json.dumps(resultados)  # ✅ Serialização correta
+            resultado_json=resultado_final
         ))
-        db.commit()
-        print("📝 Performance diária salva no cache com sucesso!")
-    else:
-        print("⚠️ Nenhum resultado válido para salvar no cache.")
 
-    return resultados
+    db.commit()
+    print("📝 Performance diária atualizada no cache com sucesso!")
+    return resultado_final
+
 
 
 def get_performance_7dias(apis, db, cliente_id, forcar=False, apenas_plant_id=None):
-    from models.performance_cache import PerformanceCache
-
     cache = (
         db.query(PerformanceCache)
         .filter_by(cliente_id=cliente_id, tipo="7dias")
@@ -185,33 +187,40 @@ def get_performance_7dias(apis, db, cliente_id, forcar=False, apenas_plant_id=No
         except Exception as e:
             print(f"❌ Erro ao obter geração de {api.__class__.__name__}: {e}")
 
-    resultados = []
+    novos_resultados = []
     for g in resultado_geracao:
         if apenas_plant_id and g["ps_id"] != apenas_plant_id:
             continue
-        ...
         try:
             r = calcular_performance_7dias(g["ps_id"], g["energia_gerada_kWh"], db, cliente_id)
             print("✅ Resultado performance:", r)
-            resultados.append(r)
+            novos_resultados.append(r)
         except Exception as e:
             print(f"❌ Erro ao calcular performance para {g}: {e}")
 
-    if resultados:
-        db.query(PerformanceCache).filter_by(cliente_id=cliente_id, tipo="7dias").delete()
-        db.add(PerformanceCache(cliente_id=cliente_id, tipo="7dias", resultado_json=resultados))
-        db.commit()
-        print("📝 Performance 7 dias salva no cache com sucesso!")
-    else:
-        print("⚠️ Nenhum resultado válido para salvar no cache.")
+    antigos = cache.resultado_json if cache else []
+    novos_ids = {r["plant_id"] for r in novos_resultados}
+    preservados = [r for r in antigos if r["plant_id"] not in novos_ids]
+    resultado_final = preservados + novos_resultados
 
-    return resultados
+    if cache:
+        cache.resultado_json = resultado_final
+        cache.updated_at = datetime.now()
+    else:
+        db.add(PerformanceCache(
+            cliente_id=cliente_id,
+            tipo="7dias",
+            resultado_json=resultado_final
+        ))
+
+    db.commit()
+    print("📝 Performance 7 dias salva no cache com sucesso!")
+    return resultado_final
+
 
 
 
 def get_performance_30dias(apis, db, cliente_id, forcar=False, apenas_plant_id=None):
-    from models.performance_cache import PerformanceCache
-
     cache = (
         db.query(PerformanceCache)
         .filter_by(cliente_id=cliente_id, tipo="30dias")
@@ -233,24 +242,33 @@ def get_performance_30dias(apis, db, cliente_id, forcar=False, apenas_plant_id=N
         except Exception as e:
             print(f"❌ Erro ao obter geração de {api.__class__.__name__}: {e}")
 
-    resultados = []
+    novos_resultados = []
     for g in resultado_geracao:
         if apenas_plant_id and g["ps_id"] != apenas_plant_id:
             continue
         try:
             r = calcular_performance_30dias(g["ps_id"], g["energia_gerada_kWh"], db, cliente_id)
             print("✅ Resultado performance:", r)
-            resultados.append(r)
+            novos_resultados.append(r)
         except Exception as e:
             print(f"❌ Erro ao calcular performance para {g}: {e}")
 
-    if resultados:
-        db.query(PerformanceCache).filter_by(cliente_id=cliente_id, tipo="30dias").delete()
-        db.add(PerformanceCache(cliente_id=cliente_id, tipo="30dias", resultado_json=resultados))
-        db.commit()
-        print("📝 Performance 30 dias salva no cache com sucesso!")
-    else:
-        print("⚠️ Nenhum resultado válido para salvar no cache.")
+    antigos = cache.resultado_json if cache else []
+    novos_ids = {r["plant_id"] for r in novos_resultados}
+    preservados = [r for r in antigos if r["plant_id"] not in novos_ids]
+    resultado_final = preservados + novos_resultados
 
-    return resultados
+    if cache:
+        cache.resultado_json = resultado_final
+        cache.updated_at = datetime.now()
+    else:
+        db.add(PerformanceCache(
+            cliente_id=cliente_id,
+            tipo="30dias",
+            resultado_json=resultado_final
+        ))
+
+    db.commit()
+    print("📝 Performance 30 dias salva no cache com sucesso!")
+    return resultado_final
 
