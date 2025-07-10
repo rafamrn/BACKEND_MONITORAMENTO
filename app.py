@@ -483,6 +483,8 @@ def listar_integracoes_admin(db: Session = Depends(get_db), usuario_logado: User
     for i in integracoes:
         integracao_dict = jsonable_encoder(i)
         integracao_dict["nome"] = i.cliente.name if i.cliente else None
+        integracao_dict["appid"] = i.appid
+        integracao_dict["appsecret"] = i.appsecret
         resultado.append(integracao_dict)
     return resultado
 
