@@ -26,4 +26,5 @@ def criar_convite(dados: ConviteCreate, db: Session = Depends(get_db), admin_use
 
 @router.get("/", response_model=list[ConviteOut])
 def listar_convites(db: Session = Depends(get_db), admin_user = Depends(get_current_admin_user)):
-    return db.query(Convite).all()
+    convites = db.query(Convite).all()
+    return convites
