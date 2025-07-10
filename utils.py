@@ -7,6 +7,8 @@ from sqlalchemy.orm import Session
 import hashlib
 from clients.isolarcloud_client import ApiSolarCloud
 from clients.deye_client import ApiDeye
+from datetime import datetime
+from pytz import timezone
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -23,6 +25,10 @@ def get_apis_ativas(db: Session, cliente_id: int):
         # Adicione aqui novas plataformas se necessário
 
     return apis
+
+def get_horario_brasilia():
+    fuso_brasilia = timezone("America/Sao_Paulo")
+    return datetime.now(fuso_brasilia)
 
 def hash_sha256(password: str) -> str:
     """

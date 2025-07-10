@@ -45,6 +45,7 @@ from passlib.hash import bcrypt
 from clients.isolarcloud_client import ApiSolarCloud
 from services.scheduler import start_scheduler
 from utils import hash_sha256
+from clients.huawei_client import ApiHuawei
 
 # ============== ⬇ APP ==============
 app = FastAPI()
@@ -67,7 +68,6 @@ if os.getenv("ENV") == "production":
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
 
 # ============== ⬇ CLIENTES DAS APIS ==============
-huawei = ApiHuawei(settings.HUAWEI_USER, settings.HUAWEI_PASS)
 
 start_scheduler()
 
@@ -502,14 +502,30 @@ def atualizar_chaves_admin(id: int, payload: dict, db: Session = Depends(get_db)
 
 # ============== ⬇ TESTES ==============
 
-@app.get("/teste/performance_diaria")
-def testar_performance_diaria(
-    plant_id: int = Query(...),
-    energia_gerada: float = Query(...),
-    db: Session = Depends(get_db),
-    usuario_logado: User = Depends(get_current_user)
-):
-    return calcular_performance_diaria(plant_id, energia_gerada, db, usuario_logado.id)
+router = APIRouter()
+
+@router.get("/huawei/testar_token")
+def testar_token_huawei(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    # Busca a integração Huawei do usuário autenticado
+    integracao = db.query(Integracao).filter_by(
+        cliente_id=user.id,
+        plataforma="Huawei"
+    ).first()
+
+    if not integracao:
+        raise HTTPException(status_code=404, detail="Integração Huawei não encontrada.")
+
+    api = ApiHuawei(integracao, db)
+    try:
+        token = api.get_token_valido()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return {
+        "message": "Token Huawei válido",
+        "token": token,
+        "token_updated_at": integracao.token_updated_at
+    }
 
 # ============== ⬇ INCLUDES ==============
 

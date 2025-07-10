@@ -23,3 +23,7 @@ def criar_convite(dados: ConviteCreate, db: Session = Depends(get_db), admin_use
     db.commit()
     db.refresh(convite)
     return convite
+
+@router.get("/", response_model=list[ConviteOut])
+def listar_convites(db: Session = Depends(get_db), admin_user = Depends(get_current_admin_user)):
+    return db.query(Convite).all()

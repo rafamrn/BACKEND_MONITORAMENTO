@@ -1,59 +1,69 @@
 import requests
-import time
 from datetime import datetime, timedelta
 from pytz import timezone
+from sqlalchemy.orm import Session
+from modelos import Integracao
+from utils import get_horario_brasilia
 
 class ApiHuawei:
     base_url = "https://la5.fusionsolar.huawei.com/thirdData/"
-    cache_expiry = 600 # 10 minutos
 
-    def __init__(self, username, password):
-        self.username = username
-        self.password = password
-        self.xsrf = None
-        self.last_token_time = 0
-        self.cached_data = None
-        self.last_cache_time = 0
+    def __init__(self, integracao: Integracao, db: Session):
+        self.username = integracao.username
+        self.password = integracao.senha
+        self.integracao = integracao
+        self.db = db
         self.session = requests.Session()
+        self.xsrf = integracao.token_acesso
+        self.token_updated_at = integracao.token_updated_at
+
+# ----------------------LOGIN------------------------#
 
     def login_huawei(self):
-        if self.xsrf and (time.time() - self.last_token_time < self.cache_expiry):
-            return self.xsrf  # Reutiliza token válido
-
         url = self.base_url + "login"
         payload = {
             "userName": self.username,
             "systemCode": self.password
         }
-        session = requests.Session()
-        response = session.post(url, json=payload)
-        self.xsrf = response.headers.get('xsrf-token')
-        self.last_token_time = time.time()
-        print(f"Novo Token Huawei Obtido: {self.xsrf}")
+
+        response = self.session.post(url, json=payload)
+
+        if response.status_code != 200:
+            print(f"Erro ao fazer login Huawei: {response.status_code} - {response.text}")
+            return False
+
+        token = response.headers.get("xsrf-token")
+        if not token:
+            print("Token não encontrado no header da resposta.")
+            return False
+
+        # Atualiza o token no banco
+        horario = get_horario_brasilia()
+        self.integracao.token_acesso = token
+        self.integracao.token_updated_at = horario
+        self.db.commit()
+        self.db.refresh(self.integracao)
+
+        # Salva na instância
+        self.xsrf = token
+        self.token_updated_at = horario
+        return True
+
+    def token_expirado(self):
+        if not self.token_updated_at or not self.xsrf:
+            return True
+        return get_horario_brasilia() > self.token_updated_at + timedelta(minutes=30)
+
+    def get_token_valido(self):
+        if self.token_expirado():
+            print("🔁 Token expirado ou inexistente. Fazendo login Huawei...")
+            if not self.login_huawei():
+                raise Exception("❌ Falha ao renovar token Huawei.")
         return self.xsrf
 
-    def _post_with_auth(self, url, body):
-        if not self.xsrf:
-            self.login_huawei()
+# ----------------------GET USINAS------------------------#
 
-        headers = {
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-            "xsrf-token": self.xsrf
-        }
-
-        response = self.session.post(url, json=body, headers=headers)
-
-        if response.status_code in (401, 403):
-            print("Token Huawei expirado. Renovando...")
-            self.xsrf = None
-            self.login_huawei()
-            headers["xsrf-token"] = self.xsrf
-            response = self.session.post(url, json=body, headers=headers)
-
-        return response
-
-    def get_usinas(self):
+    # def get_usinas(self):
         if self.cached_data and (time.time() - self.last_cache_time < self.cache_expiry):
             return self.cached_data  # Reutiliza dados se ainda não expiraram
 
