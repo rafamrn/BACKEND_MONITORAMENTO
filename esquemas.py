@@ -78,7 +78,6 @@ class ConviteOut(BaseModel):
     usado: bool
     expiracao: datetime
     criado_em: datetime
-    cliente_id: int
 
     class Config:
         from_attributes = True
