@@ -476,6 +476,21 @@ def listar_integracoes(db: Session = Depends(get_db), user: User = Depends(get_c
 
 admin_router = APIRouter(prefix="/admin", tags=["Admin"])
 
+@admin_router.delete("/integracoes/{integracao_id}")
+def deletar_integracao(
+    integracao_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin_user)  # garante acesso apenas a admins
+):
+    integracao = db.query(Integracao).filter(Integracao.id == integracao_id).first()
+
+    if not integracao:
+        raise HTTPException(status_code=404, detail="Integração não encontrada")
+
+    db.delete(integracao)
+    db.commit()
+    return {"message": "Integração removida com sucesso"}
+
 @admin_router.get("/integracoes", response_model=List[IntegracaoOut])
 def listar_integracoes_admin(db: Session = Depends(get_db), usuario_logado: User = Depends(get_current_admin_user)):
     integracoes = db.query(Integracao).all()

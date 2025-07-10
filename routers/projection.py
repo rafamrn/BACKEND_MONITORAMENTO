@@ -10,6 +10,14 @@ from typing import List
 
 router = APIRouter()
 
+@router.get("/existe")
+def verificar_projecoes_existem(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user)
+):
+    existe = db.query(MonthlyProjection).filter(MonthlyProjection.cliente_id == user.id).first()
+    return {"existe": bool(existe)}
+
 @router.post("/projecoes")
 def salvar_projecoes(
     data: MonthlyProjectionCreate,
