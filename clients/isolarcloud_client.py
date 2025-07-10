@@ -311,6 +311,105 @@ class ApiSolarCloud:
             "30dias": round(energia_30d / 1000, 2),
         }
 
+    def get_geracao_por_usina(self, ps_id: int) -> dict:
+        """Retorna geração 1d, 7d e 30d para uma única usina"""
+        if not self.token_cache:
+            self._obter_token()
+
+        print(f"🔍 Consultando geração apenas para ps_id={ps_id}")
+
+        url_device_list = self.base_url + "getDeviceList"
+        body_device = {
+            "appkey": self.appkey,
+            "token": self.token_cache,
+            "curPage": 1,
+            "size": 100,
+            "ps_id": ps_id,
+            "device_type_list": [1],
+            "lang": "_pt_BR"
+        }
+
+        response = self._post_with_auth(url_device_list, body_device)
+        if response.status_code != 200:
+            print(f"Erro ao buscar inversores da usina {ps_id}")
+            return {}
+
+        try:
+            device_list = response.json()["result_data"]["pageList"]
+            brasil = timezone("America/Sao_Paulo")
+            agora = datetime.now(brasil)
+            ontem = (agora - timedelta(days=1)).strftime("%Y%m%d")
+            sete_dias_atras = (agora - timedelta(days=8)).strftime("%Y%m%d")
+            mes_atras = (agora - timedelta(days=31)).strftime("%Y%m%d")
+
+            total_1d = 0.0
+            total_7d = 0.0
+            total_30d = 0.0
+
+            for device in device_list:
+                ps_key = device.get("ps_key")
+
+                # Geração 1 dia
+                body_1d = {
+                    "appkey": self.appkey,
+                    "token": self.token_cache,
+                    "data_point": "p1",
+                    "start_time": ontem,
+                    "end_time": ontem,
+                    "query_type": "1",
+                    "ps_key_list": [ps_key],
+                    "data_type": "2",
+                    "order": "0"
+                }
+                r1 = self._post_with_auth(self.base_url + "getDevicePointsDayMonthYearDataList", body_1d)
+                if r1.status_code == 200:
+                    try:
+                        dados = r1.json()["result_data"]
+                        chave = next(iter(dados))
+                        lista = dados[chave]["p1"]
+                        valor = float(lista[0].get("2", "0"))
+                        total_1d += valor
+                    except Exception as e:
+                        print(f"Erro extraindo 1d: {e}")
+
+                # Geração 7 dias
+                body_7d = body_1d.copy()
+                body_7d["start_time"] = sete_dias_atras
+                r2 = self._post_with_auth(self.base_url + "getDevicePointsDayMonthYearDataList", body_7d)
+                if r2.status_code == 200:
+                    try:
+                        dados = r2.json()["result_data"]
+                        chave = next(iter(dados))
+                        lista = dados[chave]["p1"]
+                        total_7d += sum(float(p.get("2", "0")) for p in lista)
+                    except Exception as e:
+                        print(f"Erro extraindo 7d: {e}")
+
+                # Geração 30 dias
+                body_30d = body_1d.copy()
+                body_30d["start_time"] = mes_atras
+                r3 = self._post_with_auth(self.base_url + "getDevicePointsDayMonthYearDataList", body_30d)
+                if r3.status_code == 200:
+                    try:
+                        dados = r3.json()["result_data"]
+                        chave = next(iter(dados))
+                        lista = dados[chave]["p1"]
+                        total_30d += sum(float(p.get("2", "0")) for p in lista)
+                    except Exception as e:
+                        print(f"Erro extraindo 30d: {e}")
+
+            return {
+                "ps_id": ps_id,
+                "diario_kWh": round(total_1d / 1000, 2),
+                "7dias_kWh": round(total_7d / 1000, 2),
+                "30dias_kWh": round(total_30d / 1000, 2),
+            }
+
+        except Exception as e:
+            print(f"Erro final ao processar geração da usina {ps_id}: {e}")
+            return {}
+
+
 
     def get_geracao(self, period: Optional[str] = None, date: Optional[str] = None, plant_id: Optional[int] = None):
         print("Chamando get_geracao() no Railway 🚀")

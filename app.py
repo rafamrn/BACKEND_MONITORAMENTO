@@ -34,7 +34,6 @@ from config.settings import settings
 from services.performance_service import (
     get_performance_diaria, get_performance_7dias, get_performance_30dias
 )
-from models.usina import UsinaModel
 from clients.isolarcloud_client import ApiSolarCloud
 from clients.huawei_client import ApiHuawei
 from clients.deye_client import ApiDeye
@@ -46,9 +45,6 @@ from clients.isolarcloud_client import ApiSolarCloud
 from services.scheduler import start_scheduler
 from utils import hash_sha256
 from clients.huawei_client import ApiHuawei
-
-from models.monthly_projection import MonthlyProjection
-from esquemas import ProjecaoMensalCreate
 
 # ============== ⬇ APP ==============
 app = FastAPI()
@@ -545,78 +541,6 @@ def testar_token_huawei(db: Session = Depends(get_db), user: User = Depends(get_
         "message": "Token Huawei válido",
         "token": token,
         "token_updated_at": integracao.token_updated_at
-    }
-
-
-@router.post("/projecoes/salvar_e_recalcular")
-def salvar_e_recalcular_projecao(
-    payload: ProjecaoMensalCreate,
-    db: Session = Depends(get_db),
-    usuario_logado: User = Depends(get_current_user)
-):
-    # 🔐 Cliente autenticado insere projeção mensal de uma usina
-    proj = db.query(MonthlyProjection).filter_by(
-        plant_id=payload.plant_id,
-        month=payload.month,
-        year=payload.year,
-        cliente_id=usuario_logado.id
-    ).first()
-
-    if proj:
-        proj.projection_kwh = payload.projection_kwh
-        proj.updated_at = datetime.utcnow()
-    else:
-        proj = MonthlyProjection(
-            plant_id=payload.plant_id,
-            month=payload.month,
-            year=payload.year,
-            projection_kwh=payload.projection_kwh,
-            cliente_id=usuario_logado.id
-        )
-        db.add(proj)
-
-    db.commit()
-
-    # 🔁 Buscar integração ativa
-    apis = get_apis_ativas(db, usuario_logado.id)
-
-    if not apis:
-        raise HTTPException(status_code=400, detail="Nenhuma integração ativa encontrada.")
-
-    # 🎯 Obter geração apenas da usina atual
-    energia_1d = energia_7d = energia_30d = None
-
-    for api in apis:
-        try:
-            geracao = api.get_geracao(period="day", date=datetime.now().strftime("%Y%m%d"), plant_id=payload.plant_id)
-            energia_1d = geracao.get("energia_gerada_kWh", 0)
-
-            geracao_7 = api.get_geracao(period="7d", plant_id=payload.plant_id)
-            energia_7d = geracao_7.get("energia_gerada_kWh", 0)
-
-            geracao_30 = api.get_geracao(period="30d", plant_id=payload.plant_id)
-            energia_30d = geracao_30.get("energia_gerada_kWh", 0)
-
-            break  # ✅ sucesso, não tenta mais outras APIs
-        except Exception as e:
-            print(f"Erro ao obter geração da usina {payload.plant_id}: {e}")
-            continue
-
-    if energia_1d is None or energia_30d is None:
-        raise HTTPException(status_code=500, detail="Erro ao obter geração da usina.")
-
-    # 🧠 Calcular performances individualmente
-    performance_dia = calcular_performance_diaria(payload.plant_id, energia_1d, db, usuario_logado.id)
-    performance_7d = calcular_performance_7dias(payload.plant_id, energia_7d, db, usuario_logado.id)
-    performance_30d = calcular_performance_30dias(payload.plant_id, energia_30d, db, usuario_logado.id)
-
-    return {
-        "mensagem": "Projeção salva com sucesso!",
-        "performances": {
-            "diaria": performance_dia,
-            "7dias": performance_7d,
-            "30dias": performance_30d
-        }
     }
 
 # ============== ⬇ INCLUDES ==============

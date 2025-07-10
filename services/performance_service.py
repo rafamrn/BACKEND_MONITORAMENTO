@@ -106,7 +106,7 @@ def calcular_performance_30dias(plant_id: int, energia_gerada: float, db: Sessio
 
 
 # Obter performance diária
-def get_performance_diaria(apis, db, cliente_id, forcar=False):
+def get_performance_diaria(apis, db, cliente_id, forcar=False, apenas_plant_id=None):
     from models.performance_cache import PerformanceCache
 
     cache = (
@@ -135,6 +135,8 @@ def get_performance_diaria(apis, db, cliente_id, forcar=False):
 
     resultados = []
     for g in resultado_geracao:
+        if apenas_plant_id and g["ps_id"] != apenas_plant_id:
+            continue
         try:
             r = calcular_performance_diaria(g["ps_id"], g["energia_gerada_kWh"], db, cliente_id)
             print("✅ Resultado performance:", r)
@@ -155,7 +157,7 @@ def get_performance_diaria(apis, db, cliente_id, forcar=False):
     return resultados
 
 
-def get_performance_7dias(apis, db, cliente_id, forcar=False):
+def get_performance_7dias(apis, db, cliente_id, forcar=False, apenas_plant_id=None):
     from models.performance_cache import PerformanceCache
 
     cache = (
@@ -181,6 +183,9 @@ def get_performance_7dias(apis, db, cliente_id, forcar=False):
 
     resultados = []
     for g in resultado_geracao:
+        if apenas_plant_id and g["ps_id"] != apenas_plant_id:
+            continue
+        ...
         try:
             r = calcular_performance_7dias(g["ps_id"], g["energia_gerada_kWh"], db, cliente_id)
             print("✅ Resultado performance:", r)
@@ -200,7 +205,7 @@ def get_performance_7dias(apis, db, cliente_id, forcar=False):
 
 
 
-def get_performance_30dias(apis, db, cliente_id, forcar=False):
+def get_performance_30dias(apis, db, cliente_id, forcar=False, apenas_plant_id=None):
     from models.performance_cache import PerformanceCache
 
     cache = (
@@ -226,6 +231,8 @@ def get_performance_30dias(apis, db, cliente_id, forcar=False):
 
     resultados = []
     for g in resultado_geracao:
+        if apenas_plant_id and g["ps_id"] != apenas_plant_id:
+            continue
         try:
             r = calcular_performance_30dias(g["ps_id"], g["energia_gerada_kWh"], db, cliente_id)
             print("✅ Resultado performance:", r)
