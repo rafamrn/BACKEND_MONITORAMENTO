@@ -215,6 +215,102 @@ class ApiSolarCloud:
 
 # OBTENDO PS_KEYS E SERIAL NUMBER E DEMAIS DADOS
     
+    def get_geracao_para_usina(self, db: Session, ps_id: str):
+        from models.monthly_projection import MonthlyProjection
+
+        print(f"🔍 Buscando geração apenas da usina {ps_id} com projeção cadastrada.")
+
+        # Verifica se a usina tem projeção mensal cadastrada
+        projecao = db.query(MonthlyProjection).filter_by(ps_id=ps_id).first()
+        if not projecao:
+            print(f"❌ Nenhuma projeção encontrada para ps_id={ps_id}. Abortando requisição.")
+            return None
+
+        # Garante token e lista de usinas atualizadas
+        if not self.token_cache:
+            self._obter_token()
+
+        if not self.usinas_cache:
+            self.get_usinas()
+
+        usina = next((u for u in self.usinas_cache if u.get("ps_id") == ps_id), None)
+        if not usina:
+            print(f"❌ Usina com ps_id={ps_id} não encontrada.")
+            return None
+
+        # Busca ps_keys
+        url_device_list = self.base_url + "getDeviceList"
+        body_device = {
+            "appkey": self.appkey,
+            "token": self.token_cache,
+            "curPage": 1,
+            "size": 100,
+            "ps_id": ps_id,
+            "device_type_list": [1],
+            "lang": "_pt_BR"
+        }
+
+        response = self._post_with_auth(url_device_list, body_device)
+        if response.status_code != 200:
+            print(f"Erro ao buscar dispositivos da usina {ps_id}")
+            return None
+
+        data = response.json()
+        ps_keys = [dev.get("ps_key") for dev in data["result_data"]["pageList"] if dev.get("ps_key")]
+
+        brasil = timezone("America/Sao_Paulo")
+        agora = datetime.now(brasil)
+        ontem = (agora - timedelta(days=1)).strftime("%Y%m%d")
+        sete_dias_atras = (agora - timedelta(days=8)).strftime("%Y%m%d")
+        mes_atras = (agora - timedelta(days=31)).strftime("%Y%m%d")
+
+        energia_1d = 0.0
+        energia_7d = 0.0
+        energia_30d = 0.0
+
+        for ps_key in ps_keys:
+            for periodo, start, soma_destino in [
+                ("1d", ontem, lambda v: energia_1d + v),
+                ("7d", sete_dias_atras, lambda v: energia_7d + v),
+                ("30d", mes_atras, lambda v: energia_30d + v),
+            ]:
+                body = {
+                    "appkey": self.appkey,
+                    "token": self.token_cache,
+                    "data_point": "p1",
+                    "end_time": ontem,
+                    "query_type": "1",
+                    "start_time": start,
+                    "ps_key_list": [ps_key],
+                    "data_type": "2",
+                    "order": "0"
+                }
+
+                r = self._post_with_auth(self.base_url + "getDevicePointsDayMonthYearDataList", body)
+                if r.status_code == 200:
+                    try:
+                        dados = r.json()["result_data"]
+                        chave = next(iter(dados))
+                        lista = dados[chave]["p1"]
+                        if periodo == "1d":
+                            valor_str = lista[0].get("2", "0")
+                            energia_1d += float(valor_str)
+                        else:
+                            soma = sum(float(p.get("2", "0")) for p in lista)
+                            if periodo == "7d":
+                                energia_7d += soma
+                            elif periodo == "30d":
+                                energia_30d += soma
+                    except Exception as e:
+                        print(f"Erro extraindo geração {periodo} de {ps_key}: {e}")
+
+        return {
+            "ps_id": ps_id,
+            "ontem": round(energia_1d / 1000, 2),
+            "7dias": round(energia_7d / 1000, 2),
+            "30dias": round(energia_30d / 1000, 2),
+        }
+
 
     def get_geracao(self, period: Optional[str] = None, date: Optional[str] = None, plant_id: Optional[int] = None):
         print("Chamando get_geracao() no Railway 🚀")

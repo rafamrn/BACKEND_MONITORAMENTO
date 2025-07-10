@@ -101,3 +101,12 @@ class ConviteCreate(BaseModel):
     email: EmailStr
     expiracao: Optional[datetime] = None  # Pode ser gerado automaticamente no backend
 
+# --------------------------
+# 📌 PROJEÇÃO MENSAL
+# --------------------------
+
+class ProjecaoMensalCreate(BaseModel):
+    plant_id: int
+    month: int
+    year: int
+    projection_kwh: float
