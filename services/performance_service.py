@@ -117,7 +117,7 @@ def get_performance_diaria(apis, db, cliente_id, forcar=False, apenas_plant_id=N
 
     if not forcar and cache and (datetime.now() - cache.updated_at) < timedelta(hours=23):
         print("🔁 Cache diária do banco")
-        return json.loads(cache.resultado_json)
+        return cache.resultado_json
 
     print("⚙️ Calculando nova performance diária...")
 
@@ -143,26 +143,20 @@ def get_performance_diaria(apis, db, cliente_id, forcar=False, apenas_plant_id=N
         except Exception as e:
             print(f"❌ Erro ao calcular performance para {g}: {e}")
 
-    # Junta os resultados novos com os antigos, evitando duplicação de plant_id
-    if cache and cache.resultado_json:
-        if isinstance(cache.resultado_json, str):
-            antigos = json.loads(cache.resultado_json)
-        else:
-            antigos = cache.resultado_json  # já é lista
-    else:
-        antigos = []
+    # Mantém dados anteriores e só substitui os plant_ids alterados
+    antigos = cache.resultado_json if cache else []
     novos_ids = {r["plant_id"] for r in novos_resultados}
-    preservados = [r for r in antigos if r.get("plant_id") not in novos_ids]
+    preservados = [r for r in antigos if r["plant_id"] not in novos_ids]
     resultado_final = preservados + novos_resultados
 
     if cache:
-        cache.resultado_json = json.dumps(resultado_final)
+        cache.resultado_json = resultado_final
         cache.updated_at = datetime.now()
     else:
         db.add(PerformanceCache(
             cliente_id=cliente_id,
             tipo="diaria",
-            resultado_json=json.dumps(resultado_final)
+            resultado_json=resultado_final
         ))
 
     db.commit()
@@ -181,7 +175,7 @@ def get_performance_7dias(apis, db, cliente_id, forcar=False, apenas_plant_id=No
 
     if not forcar and cache and (datetime.now() - cache.updated_at) < timedelta(hours=23):
         print("🔁 Cache 7 dias do banco")
-        return json.loads(cache.resultado_json)
+        return cache.resultado_json
 
     print("⚙️ Calculando nova performance dos últimos 7 dias...")
 
@@ -204,30 +198,26 @@ def get_performance_7dias(apis, db, cliente_id, forcar=False, apenas_plant_id=No
         except Exception as e:
             print(f"❌ Erro ao calcular performance para {g}: {e}")
 
-    if cache and cache.resultado_json:
-        if isinstance(cache.resultado_json, str):
-            antigos = json.loads(cache.resultado_json)
-        else:
-            antigos = cache.resultado_json  # já é lista
-    else:
-        antigos = []
+    antigos = cache.resultado_json if cache else []
     novos_ids = {r["plant_id"] for r in novos_resultados}
-    preservados = [r for r in antigos if r.get("plant_id") not in novos_ids]
+    preservados = [r for r in antigos if r["plant_id"] not in novos_ids]
     resultado_final = preservados + novos_resultados
 
     if cache:
-        cache.resultado_json = json.dumps(resultado_final)
+        cache.resultado_json = resultado_final
         cache.updated_at = datetime.now()
     else:
         db.add(PerformanceCache(
             cliente_id=cliente_id,
             tipo="7dias",
-            resultado_json=json.dumps(resultado_final)
+            resultado_json=resultado_final
         ))
 
     db.commit()
     print("📝 Performance 7 dias salva no cache com sucesso!")
     return resultado_final
+
+
 
 
 def get_performance_30dias(apis, db, cliente_id, forcar=False, apenas_plant_id=None):
@@ -240,7 +230,7 @@ def get_performance_30dias(apis, db, cliente_id, forcar=False, apenas_plant_id=N
 
     if not forcar and cache and (datetime.now() - cache.updated_at) < timedelta(hours=23):
         print("🔁 Cache 30 dias do banco")
-        return json.loads(cache.resultado_json)
+        return cache.resultado_json
 
     print("⚙️ Calculando nova performance dos últimos 30 dias...")
 
@@ -263,27 +253,22 @@ def get_performance_30dias(apis, db, cliente_id, forcar=False, apenas_plant_id=N
         except Exception as e:
             print(f"❌ Erro ao calcular performance para {g}: {e}")
 
-    if cache and cache.resultado_json:
-        if isinstance(cache.resultado_json, str):
-            antigos = json.loads(cache.resultado_json)
-        else:
-            antigos = cache.resultado_json  # já é lista
-    else:
-        antigos = []
+    antigos = cache.resultado_json if cache else []
     novos_ids = {r["plant_id"] for r in novos_resultados}
-    preservados = [r for r in antigos if r.get("plant_id") not in novos_ids]
+    preservados = [r for r in antigos if r["plant_id"] not in novos_ids]
     resultado_final = preservados + novos_resultados
 
     if cache:
-        cache.resultado_json = json.dumps(resultado_final)
+        cache.resultado_json = resultado_final
         cache.updated_at = datetime.now()
     else:
         db.add(PerformanceCache(
             cliente_id=cliente_id,
             tipo="30dias",
-            resultado_json=json.dumps(resultado_final)
+            resultado_json=resultado_final
         ))
 
     db.commit()
     print("📝 Performance 30 dias salva no cache com sucesso!")
     return resultado_final
+
