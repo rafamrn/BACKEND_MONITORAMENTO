@@ -28,21 +28,17 @@ def calcular_performance_diaria(plant_id: int, energia_gerada: float, db: Sessio
     ).first()
 
     if not projecao or projecao.projection_kwh == 0:
-        return {"plant_id": plant_id, "performance": None, "mensagem": "Sem projeção"}
+        return {
+            "plant_id": plant_id,
+            "mes": mes,
+            "dias_do_mes": calendar.monthrange(ano, mes)[1],
+            "gerado_ontem": energia_gerada,
+            "projecao_mensal": None,
+            "media_diaria_proj": None,
+            "performance_percentual": None,
+            "mensagem": "Sem projeção"
+        }
 
-    dias_do_mes = calendar.monthrange(ano, mes)[1]
-    media_diaria = projecao.projection_kwh / dias_do_mes
-    performance = energia_gerada / media_diaria
-
-    return {
-        "plant_id": plant_id,
-        "mes": mes,
-        "dias_do_mes": dias_do_mes,
-        "projecao_mensal": projecao.projection_kwh,
-        "media_diaria_proj": round(media_diaria, 2),
-        "gerado_ontem": energia_gerada,
-        "performance_percentual": round(performance * 100)
-    }
 
 
 # Performance 7 dias
@@ -58,23 +54,22 @@ def calcular_performance_7dias(plant_id: int, energia_gerada: float, db: Session
         cliente_id=cliente_id
     ).first()
 
-    if not projecao or projecao.projection_kwh == 0:
-        return {"plant_id": plant_id, "performance": None, "mensagem": "Sem projeção"}
-
     dias_do_mes = calendar.monthrange(ano, mes)[1]
-    media_diaria = projecao.projection_kwh / dias_do_mes
-    media_7dias = media_diaria * 7
-    performance = energia_gerada / media_7dias
+    media_diaria = projecao.projection_kwh / dias_do_mes if projecao and projecao.projection_kwh else None
+    media_7dias = media_diaria * 7 if media_diaria else None
+    performance = energia_gerada / media_7dias if media_7dias else None
 
     return {
         "plant_id": plant_id,
         "mes": mes,
         "dias_do_mes": dias_do_mes,
-        "projecao_mensal": projecao.projection_kwh,
-        "media_7dias_proj": round(media_7dias, 2),
+        "projecao_mensal": projecao.projection_kwh if projecao else None,
+        "media_7dias_proj": round(media_7dias, 2) if media_7dias else None,
         "gerado_7dias": energia_gerada,
-        "performance_percentual": round(performance * 100)
+        "performance_percentual": round(performance * 100) if performance is not None else None,
+        "mensagem": "Sem projeção" if not projecao or projecao.projection_kwh == 0 else None
     }
+
 
 
 # Performance 30 dias
@@ -90,19 +85,18 @@ def calcular_performance_30dias(plant_id: int, energia_gerada: float, db: Sessio
         cliente_id=cliente_id
     ).first()
 
-    if not projecao or projecao.projection_kwh == 0:
-        return {"plant_id": plant_id, "performance": None, "mensagem": "Sem projeção"}
-
     dias_do_mes = calendar.monthrange(ano, mes)[1]
-    performance = energia_gerada / projecao.projection_kwh
+    projecao_kwh = projecao.projection_kwh if projecao else None
+    performance = energia_gerada / projecao_kwh if projecao_kwh else None
 
     return {
         "plant_id": plant_id,
         "mes": mes,
         "dias_do_mes": dias_do_mes,
-        "projecao_mensal": projecao.projection_kwh,
+        "projecao_mensal": projecao_kwh,
         "gerado_30dias": energia_gerada,
-        "performance_percentual": round(performance * 100)
+        "performance_percentual": round(performance * 100) if performance is not None else None,
+        "mensagem": "Sem projeção" if not projecao or projecao_kwh == 0 else None
     }
 
 
@@ -145,8 +139,16 @@ def get_performance_diaria(apis, db, cliente_id, forcar=False, apenas_plant_id=N
 
     # Mantém dados anteriores e só substitui os plant_ids alterados
     antigos = cache.resultado_json if cache else []
-    novos_ids = {r["plant_id"] for r in novos_resultados}
-    preservados = [r for r in antigos if r["plant_id"] not in novos_ids]
+    def extrair_plant_id(item):
+        return item.get("plant_id")
+
+    # Conjunto de IDs que foram recalculados
+    novos_ids = {extrair_plant_id(r) for r in novos_resultados}
+
+    # Remove quaisquer entradas antigas com os mesmos plant_ids recalculados
+    preservados = [r for r in antigos if extrair_plant_id(r) not in novos_ids]
+
+    # Junta os preservados com os atualizados
     resultado_final = preservados + novos_resultados
 
     if cache:
@@ -198,9 +200,12 @@ def get_performance_7dias(apis, db, cliente_id, forcar=False, apenas_plant_id=No
         except Exception as e:
             print(f"❌ Erro ao calcular performance para {g}: {e}")
 
+    def extrair_plant_id(item):
+        return item.get("plant_id")
+
     antigos = cache.resultado_json if cache else []
-    novos_ids = {r["plant_id"] for r in novos_resultados}
-    preservados = [r for r in antigos if r["plant_id"] not in novos_ids]
+    novos_ids = {extrair_plant_id(r) for r in novos_resultados}
+    preservados = [r for r in antigos if extrair_plant_id(r) not in novos_ids]
     resultado_final = preservados + novos_resultados
 
     if cache:
@@ -216,8 +221,6 @@ def get_performance_7dias(apis, db, cliente_id, forcar=False, apenas_plant_id=No
     db.commit()
     print("📝 Performance 7 dias salva no cache com sucesso!")
     return resultado_final
-
-
 
 
 def get_performance_30dias(apis, db, cliente_id, forcar=False, apenas_plant_id=None):
@@ -253,9 +256,12 @@ def get_performance_30dias(apis, db, cliente_id, forcar=False, apenas_plant_id=N
         except Exception as e:
             print(f"❌ Erro ao calcular performance para {g}: {e}")
 
+    def extrair_plant_id(item):
+        return item.get("plant_id")
+
     antigos = cache.resultado_json if cache else []
-    novos_ids = {r["plant_id"] for r in novos_resultados}
-    preservados = [r for r in antigos if r["plant_id"] not in novos_ids]
+    novos_ids = {extrair_plant_id(r) for r in novos_resultados}
+    preservados = [r for r in antigos if extrair_plant_id(r) not in novos_ids]
     resultado_final = preservados + novos_resultados
 
     if cache:
@@ -271,4 +277,3 @@ def get_performance_30dias(apis, db, cliente_id, forcar=False, apenas_plant_id=N
     db.commit()
     print("📝 Performance 30 dias salva no cache com sucesso!")
     return resultado_final
-
