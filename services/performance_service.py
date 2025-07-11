@@ -144,7 +144,13 @@ def get_performance_diaria(apis, db, cliente_id, forcar=False, apenas_plant_id=N
             print(f"❌ Erro ao calcular performance para {g}: {e}")
 
     # Junta os resultados novos com os antigos, evitando duplicação de plant_id
-    antigos = json.loads(cache.resultado_json) if cache and cache.resultado_json else []
+    if cache and cache.resultado_json:
+        if isinstance(cache.resultado_json, str):
+            antigos = json.loads(cache.resultado_json)
+        else:
+            antigos = cache.resultado_json  # já é lista
+    else:
+        antigos = []
     novos_ids = {r["plant_id"] for r in novos_resultados}
     preservados = [r for r in antigos if r.get("plant_id") not in novos_ids]
     resultado_final = preservados + novos_resultados
@@ -198,7 +204,13 @@ def get_performance_7dias(apis, db, cliente_id, forcar=False, apenas_plant_id=No
         except Exception as e:
             print(f"❌ Erro ao calcular performance para {g}: {e}")
 
-    antigos = json.loads(cache.resultado_json) if cache and cache.resultado_json else []
+    if cache and cache.resultado_json:
+        if isinstance(cache.resultado_json, str):
+            antigos = json.loads(cache.resultado_json)
+        else:
+            antigos = cache.resultado_json  # já é lista
+    else:
+        antigos = []
     novos_ids = {r["plant_id"] for r in novos_resultados}
     preservados = [r for r in antigos if r.get("plant_id") not in novos_ids]
     resultado_final = preservados + novos_resultados
@@ -251,7 +263,13 @@ def get_performance_30dias(apis, db, cliente_id, forcar=False, apenas_plant_id=N
         except Exception as e:
             print(f"❌ Erro ao calcular performance para {g}: {e}")
 
-    antigos = json.loads(cache.resultado_json) if cache and cache.resultado_json else []
+    if cache and cache.resultado_json:
+        if isinstance(cache.resultado_json, str):
+            antigos = json.loads(cache.resultado_json)
+        else:
+            antigos = cache.resultado_json  # já é lista
+    else:
+        antigos = []
     novos_ids = {r["plant_id"] for r in novos_resultados}
     preservados = [r for r in antigos if r.get("plant_id") not in novos_ids]
     resultado_final = preservados + novos_resultados
