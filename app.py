@@ -44,6 +44,7 @@ from clients.isolarcloud_client import ApiSolarCloud
 from services.scheduler import start_scheduler
 from utils import hash_sha256
 from clients.huawei_client import ApiHuawei
+import traceback
 
 # ============== ⬇ APP ==============
 app = FastAPI()
@@ -515,9 +516,80 @@ def atualizar_chaves_admin(id: int, payload: dict, db: Session = Depends(get_db)
     db.refresh(integracao)
     return {"detail": "Chaves atualizadas com sucesso"}
 
+
 # ============== ⬇ TESTES ==============
 
 router = APIRouter()
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from models.monthly_projection import MonthlyProjection
+from esquemas import ProjecaoMensalCreate
+from dependencies import get_current_user
+from database import get_db
+from services.performance_service import (
+    get_performance_diaria,
+    get_performance_7dias,
+    get_performance_30dias
+)
+from utils import get_apis_ativas
+import traceback
+
+router = APIRouter()
+
+@router.post("/projecoes/salvar_e_recalcular")
+def salvar_e_recalcular_projecao(
+    data: ProjecaoMensalCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        plant_id = data.plant_id
+        year = data.year
+
+        # 🔁 Remove projeções existentes
+        db.query(MonthlyProjection).filter_by(
+            plant_id=plant_id,
+            year=year,
+            cliente_id=current_user.id
+        ).delete()
+
+        # 💾 Salva novas projeções
+        for proj in data.projections:
+            nova = MonthlyProjection(
+                plant_id=plant_id,
+                month=proj.month,
+                year=year,
+                projection_kwh=proj.kwh,
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow(),
+                cliente_id=current_user.id
+            )
+            db.add(nova)
+        db.commit()
+
+        print(f"✅ Projeções salvas com sucesso. Recalculando performance para plant_id={plant_id}")
+
+        # ⚙️ Recalcular performance apenas dessa usina
+        apis = get_apis_ativas(db, current_user.id)
+        diaria = get_performance_diaria(apis, db, current_user.id, forcar=True, apenas_plant_id=plant_id)
+        dias7 = get_performance_7dias(apis, db, current_user.id, forcar=True, apenas_plant_id=plant_id)
+        dias30 = get_performance_30dias(apis, db, current_user.id, forcar=True, apenas_plant_id=plant_id)
+
+        return {
+            "message": "Projeções atualizadas e performance recalculada com sucesso.",
+            "plant_id": plant_id,
+            "diaria": diaria,
+            "7dias": dias7,
+            "30dias": dias30
+        }
+
+    except Exception as e:
+        db.rollback()
+        print("❌ Erro ao salvar projeções e recalcular:")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Erro ao recalcular performance para a usina.")
+
 
 @router.get("/huawei/testar_token")
 def testar_token_huawei(db: Session = Depends(get_db), user: User = Depends(get_current_user)):

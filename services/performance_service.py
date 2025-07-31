@@ -26,8 +26,13 @@ def calcular_performance_diaria(plant_id: int, energia_gerada: float, db: Sessio
         year=ano,
         cliente_id=cliente_id
     ).first()
+    print(f"🔍 Buscando projeção para plant_id={plant_id} | mês={mes} | ano={ano} | cliente_id={cliente_id}")
+    print("🔎 Projeção encontrada:", projecao)
+    if projecao:
+        print("➡️ kWh previsto:", projecao.projection_kwh)
 
     if not projecao or projecao.projection_kwh == 0:
+        print("⚠️ Nenhuma projeção válida encontrada.")
         return {
             "plant_id": plant_id,
             "mes": mes,
@@ -101,6 +106,9 @@ def calcular_performance_30dias(plant_id: int, energia_gerada: float, db: Sessio
 
 
 # Obter performance diária
+from datetime import datetime, timedelta
+import traceback
+
 def get_performance_diaria(apis, db, cliente_id, forcar=False, apenas_plant_id=None):
     cache = (
         db.query(PerformanceCache)
@@ -133,37 +141,49 @@ def get_performance_diaria(apis, db, cliente_id, forcar=False, apenas_plant_id=N
         try:
             r = calcular_performance_diaria(g["ps_id"], g["energia_gerada_kWh"], db, cliente_id)
             print("✅ Resultado performance:", r)
-            novos_resultados.append(r)
+            if isinstance(r, dict):
+                novos_resultados.append(r)
+            else:
+                print("⚠️ Resultado não é um dicionário:", r)
         except Exception as e:
-            print(f"❌ Erro ao calcular performance para {g}: {e}")
+            print("❌ Erro ao calcular performance individual:")
+            traceback.print_exc()
 
-    # Mantém dados anteriores e só substitui os plant_ids alterados
     antigos = cache.resultado_json if cache else []
+
     def extrair_plant_id(item):
-        return item.get("plant_id")
+        if isinstance(item, dict):
+            return item.get("plant_id")
+        print("⚠️ item inesperado em novos_resultados:", item)
+        return None
 
-    # Conjunto de IDs que foram recalculados
-    novos_ids = {extrair_plant_id(r) for r in novos_resultados}
-
-    # Remove quaisquer entradas antigas com os mesmos plant_ids recalculados
+    novos_ids = {extrair_plant_id(r) for r in novos_resultados if extrair_plant_id(r) is not None}
     preservados = [r for r in antigos if extrair_plant_id(r) not in novos_ids]
 
-    # Junta os preservados com os atualizados
     resultado_final = preservados + novos_resultados
 
-    if cache:
-        cache.resultado_json = resultado_final
-        cache.updated_at = datetime.now()
-    else:
-        db.add(PerformanceCache(
-            cliente_id=cliente_id,
-            tipo="diaria",
-            resultado_json=resultado_final
-        ))
+    # 🔍 Verificando o que está prestes a ser salvo no cache
+    print("🧾 Resultado final para salvar no cache:", resultado_final)
 
-    db.commit()
+    try:
+        if cache:
+            cache.resultado_json = resultado_final
+            cache.updated_at = datetime.now()
+        else:
+            db.add(PerformanceCache(
+                cliente_id=cliente_id,
+                tipo="diaria",
+                resultado_json=resultado_final
+            ))
+        db.commit()
+    except Exception as e:
+        print("❌ Erro ao salvar resultado_final no banco:")
+        traceback.print_exc()
+        raise
+
     print("📝 Performance diária atualizada no cache com sucesso!")
     return resultado_final
+
 
 
 
